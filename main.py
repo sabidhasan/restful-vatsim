@@ -23,7 +23,7 @@
 
     #/api/v1/pilots/alltypes/?min_latitude=50&maxlatitude=100                   identify by latitude
     #/api/v1/pilots/alltypes/?min_longitude=50&maxlongitude=100                 identify by latitude
-    #/api/v1/pilots/alltypes/?min_altitude=0&maxaltitude=10000                  identify by altitude
+    #/api/v1/pilots/alltypes/?min_altitude=0&maxaltitude=FL100                  identify by altitude
     #/api/v1/pilots/alltypes/?min_speed=0&maxspeed=0
     #/api/v1/pilots/alltypes/?min_heading=0&maxheading=100
 
@@ -65,6 +65,12 @@
 
 
 
+
+
+#do imports
+
+#create flask app
+
 #create cache object
 
 #  *update* function
@@ -74,3 +80,8 @@
 #  *download* function
     #randomize source
     #download
+
+# *flightlevel_to_feet* from cronupdater    - for parsing flight level
+
+
+# *routes*
