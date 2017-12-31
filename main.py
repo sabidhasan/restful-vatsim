@@ -79,14 +79,28 @@ from vatsim_helpers import *
 app = Flask(__name__)
 api = Api(app)
 
+
+#######TO--DO
+####### filter data needs to learn hwo to filtervoice server, pilot, controllers
+####### class pilots and controllers for their "routes" in flask
+####### make class for latest file, rather than object
+####### jsonify data reads data from pilots and contorllers too
+#######
+
 #Memoization for latest data
-latest_file = {'time_updated': 0, 'data': None}
+#latest_file = {'time_updated': 0, 'data': None}
 
+#vastim_data = VatsimData()
 
-def filter_data(latest_file, **kwargs):
+#def filter_data(latest_file, **kwargs):
 
-    #Check for errors in latest file here...
-    return latest_file
+    #Initial filter based on what route we're on (ATC, pilot, voice servers)
+#    curr_data = latest_file["data"][kwargs["filter"]]
+
+    #for line in curr_data:
+    #    if "name" in kwargs:
+
+#    return curr_data
 
 
 #Restful routes
@@ -101,15 +115,16 @@ class VoiceServers(Resource):
     @use_args(args)
     def get(self, request_arguments):
         #Get newest data
-        global latest_file
-        latest_file = update_file(latest_file)
-
+        #global latest_file
+        #latest_file = update_file(latest_file)
+        vatsim_data = VatsimData()
         #Filter based on parameters
-        return_data = filter_data(latest_file, filter="voiceservers", params=request_arguments)
+        return_data = vatsim_data.filter("voice_servers", params=request_arguments)
+        #filter_data(latest_file, filter="voice_servers", params=request_arguments)
 
 
 
-        return {"message": return_data}
+        return return_data
         #Validate keyword arguments
 
         #Build complete list

@@ -21,8 +21,6 @@ def update_file(current_file):
     return current_file
 
 ################################################################################
-################################################################################
-################################################################################
 
 def download():
     '''download() tries to download the latest vatsim data from a list of
@@ -36,15 +34,14 @@ def download():
     try:
         data = requests.get(random_url).text
         if not(len(data)):
-            raise ConnectionError
+            print "Error in downloaded file"
+            return None
+        #Return data
+        return data
     except:
         print "Error downloading data"
         return None
-    #Return data
-    return data
 
-################################################################################
-################################################################################
 ################################################################################
 
 def check_line_validity(line):
@@ -68,8 +65,6 @@ def check_line_validity(line):
     return True
 
 ################################################################################
-################################################################################
-################################################################################
 
 def jsonify_data(data):
     ''' jsonify_data() makes recieved raw VATSIM.txt data usable by trimming the
@@ -78,7 +73,7 @@ def jsonify_data(data):
     #Linted data that will be returned
     parsed_data = {
         "pilots": ["PILOTS contains information about all connected pilots"],
-        "voiceServers": ["VOICE SERVERS contains a list of all running voice servers that clients can use"],
+        "voice_servers": ["VOICE SERVERS contains a list of all running voice servers that clients can use"],
         "controllers": ["CONTROLLERS contains information about connected controllers"]
     }
 
@@ -96,46 +91,31 @@ def jsonify_data(data):
             # Construct dictionary of this line
             curr_data = {"Location": vals[0], "IP Address": vals[1], "Name": vals[2],
             "Host Name": vals[3], "Clients Allowed": vals[4]}
-
             #Append to parsed data
-            parsed_data["voiceServers"].append(curr_data)
+            parsed_data["voice_servers"].append(curr_data)
 
         #ATC found
         elif vals[3] == "ATC":
-            pass
+            #Construct dictionary of this line
+            curr_data = {"Callsign": vals[0], "Vatsim ID": vals[1], \
+            "Real Name": vals[2], "Frequency": vals[4], "Latitude": float(vals[5]), \
+            "Longitude": float(vals[6]), "Visible Range": int(vals[19]), "ATIS": \
+            vals[35], "Login Time": vals[37]}
+            #Append to parsed data
+            parsed_data["controllers"].append(curr_data)
         elif vals[3] == "PILOT":
+            curr_data = {"Callsign": vals[0], "Vatsim ID": vals[1], "Real Name": vals[2], \
+            "Latitude": float(vals[5]), "Longitude": , float(vals[6]), "Login Time": vals[37], \
+            "Altitude": int(vals[7]), "Ground Speed":, int(vals[8]), "Heading": vals[38], \
+            "Route": vals[30], "Remarks": vals[29], "Planned Aircraft": vals[9], \
+            "Planned Departure Airport": vals[11], "Planned Altitude": flightlevel_to_feet(vals[12]), \
+            "Planned Destination Airport": vals[13], "Flight Type": vals[21]}
             pass
 
-        return parsed_data
+    return parsed_data
 
-        # if vals[3] == "ATC":
-        #     try:
-        #         inj = '''INSERT INTO 'onlines' ("callsign", "time_updated", "cid", "real_name", "frequency", "VATSIMlatitude", "VATSIMlongitude", "visible_range", "ATIS_msg", "time_logon", "type", "latest")''' + \
-        #         ''' VALUES ("%s", "%s", "%s", "%s", "%s", %s, %s, %s, "%s", "%s", "%s", "%s")''' % (vals[0], str(int(time.time())), vals[1], vals[2], vals[4] , float(vals[5]), float(vals[6]), int(vals[19]), \
-        #         vals[35].replace("\"", "").replace("'", ""), str(vals[37]), vals[3], "1")
-        #         c.execute(inj)
-        #         counter += 1
-        #     except:
-        #         #TO--DO Log the error here
-        #         print("Error", vals[0:7], ". . .")
-        #         continue
-        #
-        # elif vals[3] == "PILOT":
-        #     try:
-        #         inj = '''INSERT INTO "onlines" ("callsign", "time_updated", "cid", "real_name", "VATSIMlatitude", "VATSIMlongitude", "time_logon", "type", "altitude", "groundspeed"''' + \
-        #         ''', "planned_aircraft", "planned_tascruise", "planned_depairport", "planned_altitude", "planned_destairport", "planned_flighttype", "planned_deptime", "planned_altairport"''' + \
-        #         ''', "planned_remarks", "planned_route", "heading", "latest") VALUES ("%s", "%s", "%s", "%s", %s, %s, "%s", "%s", %s, %s, "%s", "%s", "%s", %s, "%s", "%s", "%s", "%s", "%s", "%s", %s, %s)''' % \
-        #         (vals[0], str(int(time.time())), vals[1], vals[2], float(vals[5]), float(vals[6]), str(vals[37]), vals[3], int(vals[7]), int(vals[8]), vals[9], vals[10], vals[11],
-        #         flightlevel_to_feet(vals[12]), vals[13], vals[21], vals[22], vals[28], vals[29].replace("\"", "").replace("'", ""), vals[30].replace("\"", "").replace("'", ""), int(vals[38]), "1")
-        #         c.execute(inj)
-        #         counter += 1
-        #     except:
-        #         #TO--DO Log the error here
-        #         print("Error", vals[0:8], " . . .")
-        #         continue
-        # else:
-        #     #TO--DO: log this because its not ATC or pilot!
-        #     pass
+#"planned_deptime", "planned_altairport"
+#   vals[22],               vals[28]
 
 
 
@@ -148,12 +128,13 @@ def jsonify_data(data):
 
 
 
+class VatsimData():
+    def __init__(self):
+        self.latest_file = update_file({'time_updated': 0, 'data': None})
 
-
-
-
-
-
+    def filter(self, value, **kwargs):
+        return self.latest_file["data"][value]
+        #return
 
 
 def flightlevel_to_feet(flightlevel):
