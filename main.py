@@ -3,7 +3,6 @@
     #/api/v1/voiceServers?name=London                                only servers with "london" as name
     #/api/v1/voiceServers?name=London&exactMatch=true                match exactly
     #/api/v1/voiceServers?limit=5                                    limit to 5
-    #/api/v1/voiceServers?hostname='vatsim.net'                      only servers with "vatsim.net" in host
 
 #PILOTS (client type is pilot)
     #/api/v1/pilots                                                  all pilots
@@ -71,6 +70,10 @@
 from flask import Flask
 from flask_restful import Resource, Api
 import requests, random, time
+#for URL arguments
+from webargs import fields, validate
+from webargs.flaskparser import use_kwargs, parser
+
 
 #create flask app
 app = Flask(__name__)
@@ -131,3 +134,38 @@ def flightlevel_to_feet(flightlevel):
             return int(flightlevel)
         except ValueError:
             return 0
+
+
+class VoiceServers(Resource):
+    #Build valid arguments
+    args = {
+        'name': fields.Str(required=False),#, validate=validate.OneOf(['baz', 'qux'])),
+        'exactMatch': fields.Str(required=False),
+        'limit': fields.Str(required=False)
+    }
+
+    @use_kwargs(args)
+    def get(self, name, exactMatch, limit):
+        #Validate keyword arguments
+
+        #Build complete list
+
+        #Filter if needed
+
+        #if name:
+    #        return {'name': name, 'exactMatch': exactMatch, 'limit': limit}
+#        else:
+        #    return {'none': "none"}
+
+        #Return list as found
+
+api.add_resource(VoiceServers, '/api/v1/voiceServers')
+
+#@parser.error_handler
+#def handle_request_parsing_error(err):#
+#    return {}; #abort(422, errors="err.messages")
+
+
+
+if __name__ == '__main__':
+    app.run(debug=True)
