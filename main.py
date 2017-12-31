@@ -70,10 +70,11 @@
 from flask import Flask
 from flask_restful import Resource, Api
 import requests, random, time
-#for URL arguments
+#For URL arguments
 from webargs import fields, validate
-from webargs.flaskparser import use_kwargs, parser
-
+from webargs.flaskparser import use_args, parser, abort
+#Custom methods
+from vatsim_helpers import *
 
 #create flask app
 app = Flask(__name__)
@@ -82,70 +83,24 @@ api = Api(app)
 #Memoization for latest data
 latest_file = {'time_updated': 0, 'file': None}
 
-#Generic function definitions
-
-def get_latest_data():
-    '''get_latest_data() checks for data freshness in the local cache and if
-    data is too old, then it fetches new data. It then returns freshest data'''
-    #Check cache freshness; call download if needed
-    if (latest_file["time_updated"] + 120) < int(time.time()):
-        #Needs updating
-        new_file = download()
-        if new_file is not None:
-            latest_file["time_updated"] = int(time.time())
-            latest_file["file"] = new_file
-        else:
-            print "Downloaded file not valid"
-    #Return newest data
-    return latest_file["file"]
-
-
-def download():
-    '''download() tries to download the latest vatsim data from a list of
-    randomized servers'''
-    #random urls to download from
-    vatsim_urls = ["http://info.vroute.net/vatsim-data.txt", "http://data.vattastic.com/vatsim-data.txt", \
-            "http://vatsim.aircharts.org/vatsim-data.txt", "http://vatsim-data.hardern.net/vatsim-data.txt", \
-            "http://wazzup.flightoperationssystem.com/vatsim/vatsim-data.txt"]
-    random_url = random.choice(vatsim_urls)
-    #Download page
-    try:
-        data = requests.get(random_url).text
-        if not(len(data)):
-            raise ConnectionError
-    except:
-        print "Error downloading data"
-        return None
-    #Return data
-    return data
-
-
-def flightlevel_to_feet(flightlevel):
-    '''Function recieves something like 'FL360' and returns 36000'''
-
-    if not(flightlevel):
-        return 0
-
-    flightlevel = str(flightlevel).lower()
-    if "fl" in flightlevel or "f" in flightlevel:
-        return int(flightlevel.replace("fl", "").replace("f", "")) * 100
-    else:
-        try:
-            return int(flightlevel)
-        except ValueError:
-            return 0
-
-
+#Restful routes
 class VoiceServers(Resource):
-    #Build valid arguments
+    #Build valid arguments dictionary
     args = {
-        'name': fields.Str(required=False),#, validate=validate.OneOf(['baz', 'qux'])),
-        'exactMatch': fields.Str(required=False),
-        'limit': fields.Str(required=False)
+        'name': fields.Str(required=False),
+        'exactMatch': fields.Bool(required=False),
+        'limit': fields.Int(required=False, validate= lambda x: x < 50, help="Boooo")
     }
 
-    @use_kwargs(args)
-    def get(self, name, exactMatch, limit):
+    @use_args(args)
+    def get(self, request_arguments):
+        ret=  {}
+        for item in request_arguments:
+            ret[item] = request_arguments[item]
+#        for item in request_arguments:#
+#$            ret[item] = request_arguments[item]
+
+        return {"message": request_arguments}
         #Validate keyword arguments
 
         #Build complete list
@@ -161,9 +116,11 @@ class VoiceServers(Resource):
 
 api.add_resource(VoiceServers, '/api/v1/voiceServers')
 
-#@parser.error_handler
-#def handle_request_parsing_error(err):#
-#    return {}; #abort(422, errors="err.messages")
+@parser.error_handler
+def handle_request_parsing_error(err):#
+#    '''webargs error handler that uses Flask-RESTful's abort function to return
+#    a JSON error response to the client.'''
+    abort(422)
 
 
 
