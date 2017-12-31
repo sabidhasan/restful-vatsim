@@ -69,7 +69,6 @@
 #Module imports
 from flask import Flask
 from flask_restful import Resource, Api
-import requests, random, time
 #For URL arguments
 from webargs import fields, validate
 from webargs.flaskparser import use_args, parser, abort
@@ -81,7 +80,14 @@ app = Flask(__name__)
 api = Api(app)
 
 #Memoization for latest data
-latest_file = {'time_updated': 0, 'file': None}
+latest_file = {'time_updated': 0, 'data': None}
+
+
+def filter_data(latest_file, **kwargs):
+
+    #Check for errors in latest file here...
+    return latest_file
+
 
 #Restful routes
 class VoiceServers(Resource):
@@ -95,15 +101,15 @@ class VoiceServers(Resource):
     @use_args(args)
     def get(self, request_arguments):
         #Get newest data
+        global latest_file
+        latest_file = update_file(latest_file)
+
+        #Filter based on parameters
+        return_data = filter_data(latest_file, filter="voiceservers", params=request_arguments)
 
 
-        ret=  {}
-        for item in request_arguments:
-            ret[item] = request_arguments[item]
-#        for item in request_arguments:#
-#$            ret[item] = request_arguments[item]
 
-        return {"message": request_arguments}
+        return {"message": return_data}
         #Validate keyword arguments
 
         #Build complete list
