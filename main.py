@@ -89,11 +89,14 @@ class VoiceServers(Resource):
     args = {
         'name': fields.Str(required=False),
         'exactMatch': fields.Bool(required=False),
-        'limit': fields.Int(required=False, validate= lambda x: x < 50, help="Boooo")
+        'limit': fields.Int(required=False, validate=(lambda x: 1 <= x < 50))
     }
 
     @use_args(args)
     def get(self, request_arguments):
+        #Get newest data
+
+
         ret=  {}
         for item in request_arguments:
             ret[item] = request_arguments[item]
@@ -118,9 +121,17 @@ api.add_resource(VoiceServers, '/api/v1/voiceServers')
 
 @parser.error_handler
 def handle_request_parsing_error(err):#
-#    '''webargs error handler that uses Flask-RESTful's abort function to return
-#    a JSON error response to the client.'''
-    abort(422)
+    '''webargs error handler that uses Flask-RESTful's abort function to return
+    a JSON error response to the client.'''
+    errors = {
+        "exactMatch": "The 'exactMatch' parameter must be a boolean (true/false). Invalid value supplied.",
+        "limit": "The 'Limit' parameter must be a number from 1 to 50.",
+        "name": "'Name' parameter must be string."
+    }
+
+    #Customize errors and abort request
+    current_error = {"*" + error + "* Parameter": errors[error] for error in err[0]}
+    abort(422, errors=current_error)
 
 
 
