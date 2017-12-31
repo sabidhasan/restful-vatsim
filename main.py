@@ -87,22 +87,6 @@ api = Api(app)
 ####### jsonify data reads data from pilots and contorllers too
 #######
 
-#Memoization for latest data
-#latest_file = {'time_updated': 0, 'data': None}
-
-#vastim_data = VatsimData()
-
-#def filter_data(latest_file, **kwargs):
-
-    #Initial filter based on what route we're on (ATC, pilot, voice servers)
-#    curr_data = latest_file["data"][kwargs["filter"]]
-
-    #for line in curr_data:
-    #    if "name" in kwargs:
-
-#    return curr_data
-
-
 #Restful routes
 class VoiceServers(Resource):
     #Build valid arguments dictionary

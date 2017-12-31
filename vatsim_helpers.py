@@ -82,9 +82,9 @@ def jsonify_data(data):
 
     #Linted data that will be returned
     parsed_data = {
-        "pilots": ["PILOTS contains information about all connected pilots"],
-        "voice_servers": ["VOICE SERVERS contains a list of all running voice servers that clients can use"],
-        "controllers": ["CONTROLLERS contains information about connected controllers"]
+        "pilots": [],
+        "voice_servers": [],
+        "controllers": []
     }
 
     #Loop through line by line
@@ -119,6 +119,7 @@ def jsonify_data(data):
 
 class VatsimData():
     def __init__(self):
+        #make a dummy file and update it
         self.latest_file = {'time_updated': 0, 'data': None}
         self.update_file()
 
@@ -135,14 +136,35 @@ class VatsimData():
                 self.latest_file["data"] = jsonify_data(new_file)
             else:
                 print "Downloaded file not valid"
-            #File was updated - it was too old
-            return True
-        #File wasnt actually updated because it is new enough already
-        return False
 
     def filter(self, value, **kwargs):
-        return self.latest_file["data"][value]
-        #return
+        # ------ TO--DO: add
+        boiler_plate = {
+            "voice_servers": "VOICE SERVERS contains a list of all running voice servers that clients can use",
+            "pilots": "PILOTS contains information about all connected pilots",
+            "controllers": "CONTROLLERS contains information about connected controllers"
+        }
+
+        curr_data = []
+
+        #Loop through relevant data (pilots, controllers or voice servers)
+        for item in self.latest_file["data"][value]:
+            #Look at kwargs
+            if "name" in kwargs["params"]:
+                if "exactMatch" in kwargs["params"] and kwargs["params"]["name"] == item["Name"]:
+                    curr_data.append(item)
+                elif "exactMatch" not in kwargs["params"] and kwargs["params"]["name"] in item["Name"]:
+                    curr_data.append(item)
+
+            elif "name" not in kwargs["params"]:
+                #No name supplied
+                curr_data.append(item)
+
+        #Deal with limit
+        if "limit" in kwargs["params"]:
+            return curr_data[:kwargs["params"]["limit"]]
+        else:
+            return curr_data
 
 ################################################################################
 
