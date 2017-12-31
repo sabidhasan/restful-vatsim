@@ -10,3 +10,8 @@ Used by VATSee on the backend.
 - flask_restful
 - requests
 - webargs
+
+#To Do
+- logging
+- writing main functions
+- documentation
