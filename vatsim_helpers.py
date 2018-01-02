@@ -120,6 +120,8 @@ def jsonify_data(data):
 ################################################################################
 
 class VatsimData(object):
+    ''' Generic parent class for voiceServer, pilots and controllers '''
+
     #Boiler plate text that will get added to returned objects
     boiler_plate = {
         "voice_servers": "VOICE SERVERS contains a list of all running voice servers that clients can use",
@@ -170,22 +172,23 @@ class VatsimData(object):
 ################################################################################
 
 class voiceServer(VatsimData):
+    ''' Use this for '''
     def __init__(self):
 #        VatsimData.__init__(self)
         super(test, self).__init__()
+        self.full_name = "voice_servers"
 
 
-    def filter(self, value, **kwargs):
-        ''' Filters the data-set based on value (pilots, controllers or voice
-        server), and other keyword arguments (see docs for kwarg help) '''
+    def filter(self, **kwargs):
+        ''' Filters the data-set based on kwargs (see docs for kwarg help) '''
 
         curr_data = [{
             "Time Updated (UTC)": int(self.latest_file["time_updated"]),
-            "Info": self.boiler_plate[value]
+            "Info": self.boiler_plate[self.full_name]
         }]
 
         #Loop through relevant data (pilots, controllers or voice servers)
-        for item in self.latest_file["data"][value]:
+        for item in self.latest_file["data"][self.full_name]:
             #Look at kwargs
             if "name" in kwargs["params"]:
                 if "exactMatch" in kwargs["params"] and kwargs["params"]["name"] == item["Name"]:
