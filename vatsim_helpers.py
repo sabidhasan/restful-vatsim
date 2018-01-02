@@ -13,17 +13,19 @@ def download():
             "http://vatsim.aircharts.org/vatsim-data.txt", "http://vatsim-data.hardern.net/vatsim-data.txt", \
             "http://wazzup.flightoperationssystem.com/vatsim/vatsim-data.txt"]
     random_url = random.choice(vatsim_urls)
-    #Download page
+
+    #Download page and save it to disk
     try:
-        data = requests.get(random_url).text
+        data = requests.get(random_url).text.encode('utf-8')
         if not(len(data)):
-            print "Error in downloaded file"
-            return None
-        #Return data
-        return data
+            raise ValueError
     except:
-        print "Error downloading data"
+        print "Could not download file"
         return None
+
+    with open("vatsim_data.txt", 'wb') as f:
+        f.write(data)
+    return data
 
 ################################################################################
 
@@ -118,18 +120,40 @@ def jsonify_data(data):
 ################################################################################
 
 class VatsimData():
+    #Boiler plate text that will get added to returned objects
+    boiler_plate = {
+        "voice_servers": "VOICE SERVERS contains a list of all running voice servers that clients can use",
+        "pilots": "PILOTS contains information about all connected pilots",
+        "controllers": "CONTROLLERS contains information about connected controllers"
+    }
+
     def __init__(self):
-        #make a dummy file and update it
-        self.latest_file = {'time_updated': 0, 'data': None}
+        #stores latest file dictionary that has file data and time updated
+        self.latest_file = None
+        #Get latest cached file, which returns latest saved file
+        #on disk. If none exists, it returns a dummy blank file
+        self.get_latest_cached_file()
+        #Update the file (function will update if necessary)
         self.update_file()
+
+    def get_latest_cached_file(self):
+        ''' get_latest_cached_file() returns the latest file available on disk
+        or returns a dummy blank file with time_updated of 0. '''
+
+        self.latest_file = {'time_updated': 0, 'data': None}
 
     def update_file(self):
         '''update_file() checks for data freshness in the local cache and if
         data is too old, then it fetches new data. It then returns freshest data'''
+        if not self.latest_file:
+            print "No file loaded"
+            return None
+
         #Check cache freshness; call download if needed
         if (self.latest_file["time_updated"] + 120) < int(time.time()):
             #Needs updating
             new_file = download()
+
             if new_file is not None:
                 self.latest_file["time_updated"] = int(time.time())
                 #Jsonify the data
@@ -138,14 +162,11 @@ class VatsimData():
                 print "Downloaded file not valid"
 
     def filter(self, value, **kwargs):
-        # ------ TO--DO: add
-        boiler_plate = {
-            "voice_servers": "VOICE SERVERS contains a list of all running voice servers that clients can use",
-            "pilots": "PILOTS contains information about all connected pilots",
-            "controllers": "CONTROLLERS contains information about connected controllers"
-        }
-
-        curr_data = []
+        ''' '''
+        curr_data = [{
+        "Time Updated": str(self.latest_file["time_updated"]) + " UTC",
+        "Info": self.boiler_plate[value]
+        }]
 
         #Loop through relevant data (pilots, controllers or voice servers)
         for item in self.latest_file["data"][value]:
@@ -160,9 +181,11 @@ class VatsimData():
                 #No name supplied
                 curr_data.append(item)
 
-        #Deal with limit
+
+        #Deal with limit. We use +1 because the first object is always info
+        #about the file
         if "limit" in kwargs["params"]:
-            return curr_data[:kwargs["params"]["limit"]]
+            return curr_data[:kwargs["params"]["limit"]+1]
         else:
             return curr_data
 

@@ -93,8 +93,12 @@ class VoiceServers(Resource):
     args = {
         'name': fields.Str(required=False),
         'exactMatch': fields.Bool(required=False),
-        'limit': fields.Int(required=False, validate=(lambda x: 1 <= x < 50))
+        'limit': fields.Int(required=False, validate=(lambda x: 1 <= x <= 50))
     }
+
+    def __init__(self):
+        super(VoiceServers, self).__init__()
+        self.full_name = "voice_servers"
 
     @use_args(args)
     def get(self, request_arguments):
@@ -103,7 +107,7 @@ class VoiceServers(Resource):
         #latest_file = update_file(latest_file)
         vatsim_data = VatsimData()
         #Filter based on parameters
-        return_data = vatsim_data.filter("voice_servers", params=request_arguments)
+        return_data = vatsim_data.filter(self.full_name, params=request_arguments)
         #filter_data(latest_file, filter="voice_servers", params=request_arguments)
 
 
