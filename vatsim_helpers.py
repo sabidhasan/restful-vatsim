@@ -1,7 +1,7 @@
 '''
 Module contains helper functions for main.py for restful_vatsim
 '''
-import time, random, requests
+import time, random, requests, os
 
 ################################################################################
 
@@ -139,15 +139,20 @@ class VatsimData():
     def get_latest_cached_file(self):
         ''' get_latest_cached_file() returns the latest file available on disk
         or returns a dummy blank file with time_updated of 0. '''
+        file_path = "vatsim_data.txt"
 
-        self.latest_file = {'time_updated': 0, 'data': None}
+        #See if file exists
+        if not os.path.isfile(file_path):
+            self.latest_file = {'time_updated': 0, 'data': None}
+        else:
+            #Return file from disk
+            with open(file_path) as f:
+                self.latest_file = {'time_updated': os.path.getmtime(file_path), 'data': f.read()}
+        return self.latest_file
 
     def update_file(self):
         '''update_file() checks for data freshness in the local cache and if
         data is too old, then it fetches new data. It then returns freshest data'''
-        if not self.latest_file:
-            print "No file loaded"
-            return None
 
         #Check cache freshness; call download if needed
         if (self.latest_file["time_updated"] + 120) < int(time.time()):
@@ -162,11 +167,8 @@ class VatsimData():
                 print "Downloaded file not valid"
 
     def filter(self, value, **kwargs):
-        ''' '''
-        curr_data = [{
-        "Time Updated": str(self.latest_file["time_updated"]) + " UTC",
-        "Info": self.boiler_plate[value]
-        }]
+        ''' Filters the data-set based on value (pilots, controllers or voice
+        server), and other keyword arguments (see docs for kwarg help) '''
 
         #Loop through relevant data (pilots, controllers or voice servers)
         for item in self.latest_file["data"][value]:
