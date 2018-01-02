@@ -102,10 +102,9 @@ class VoiceServers(Resource):
 
     @use_args(args)
     def get(self, request_arguments):
-        #Get newest data
-        #global latest_file
-        #latest_file = update_file(latest_file)
-        vatsim_data = VatsimData()
+        #Create class definition
+        voice_server = voiceServer()
+
         #Filter based on parameters
         return_data = vatsim_data.filter(self.full_name, params=request_arguments)
         #filter_data(latest_file, filter="voice_servers", params=request_arguments)

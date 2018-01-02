@@ -119,7 +119,7 @@ def jsonify_data(data):
 
 ################################################################################
 
-class VatsimData():
+class VatsimData(object):
     #Boiler plate text that will get added to returned objects
     boiler_plate = {
         "voice_servers": "VOICE SERVERS contains a list of all running voice servers that clients can use",
@@ -147,7 +147,8 @@ class VatsimData():
         else:
             #Return file from disk
             with open(file_path) as f:
-                self.latest_file = {'time_updated': os.path.getmtime(file_path), 'data': f.read()}
+                data = jsonify_data(f.read())
+                self.latest_file = {'time_updated': os.path.getmtime(file_path), 'data': data}
         return self.latest_file
 
     def update_file(self):
@@ -166,9 +167,22 @@ class VatsimData():
             else:
                 print "Downloaded file not valid"
 
+################################################################################
+
+class voiceServer(VatsimData):
+    def __init__(self):
+#        VatsimData.__init__(self)
+        super(test, self).__init__()
+
+
     def filter(self, value, **kwargs):
         ''' Filters the data-set based on value (pilots, controllers or voice
         server), and other keyword arguments (see docs for kwarg help) '''
+
+        curr_data = [{
+            "Time Updated (UTC)": int(self.latest_file["time_updated"]),
+            "Info": self.boiler_plate[value]
+        }]
 
         #Loop through relevant data (pilots, controllers or voice servers)
         for item in self.latest_file["data"][value]:
@@ -183,15 +197,21 @@ class VatsimData():
                 #No name supplied
                 curr_data.append(item)
 
-
         #Deal with limit. We use +1 because the first object is always info
         #about the file
         if "limit" in kwargs["params"]:
+            curr_data[0]["Number of Records"] = kwargs["params"]["limit"]
             return curr_data[:kwargs["params"]["limit"]+1]
         else:
+            curr_data[0]["Number of Records"] = len(curr_data)
             return curr_data
 
-################################################################################
+
+
+
+
+
+
 
 def flightlevel_to_feet(flightlevel):
     '''The flightlevel_to_feet() function recieves something like 'FL360' or 1500
