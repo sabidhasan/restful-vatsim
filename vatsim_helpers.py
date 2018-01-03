@@ -8,7 +8,7 @@ import time, random, requests, os
 def download():
     '''download() tries to download the latest vatsim data from a list of
     randomized servers to distribute server load'''
-    #random urls to download from
+    #list of sources to download from
     vatsim_urls = ["http://info.vroute.net/vatsim-data.txt", "http://data.vattastic.com/vatsim-data.txt", \
             "http://vatsim.aircharts.org/vatsim-data.txt", "http://vatsim-data.hardern.net/vatsim-data.txt", \
             "http://wazzup.flightoperationssystem.com/vatsim/vatsim-data.txt"]
@@ -30,22 +30,21 @@ def download():
 ################################################################################
 
 def check_line_validity(line):
-    ''' check_line_validity() recieves an array of each line in the VATSIM raw
-    data, wherein the array is the line already split by ":", and the function
-    returns true if it's valid and false if it is not '''
-
+    ''' check_line_validity() recieves a line in the VATSIM raw data and the
+	function returns true if it's valid and false if it is not '''
+    line = line.split(":")
     try:
         #Check for VATSIM comments; these are not valid. First character of first
         #position in array
         if line[0][0] == ';':
             return False
-
         #This is an invalid line (non-pilot/ATC/voice server)
         if len(line) != 6 and len(line) != 42:
             return False
     #Line is not accessible at 0th position, so must be empty
     except IndexError:
         return False
+
     #Line must be valid
     return True
 
@@ -91,12 +90,12 @@ def jsonify_data(data):
 
     #Loop through line by line
     for line in data.split("\n"):
-        #Split by colon (the delimiter)
-        vals = line.split(":")
-
-        #Check if line is valid
-        if not check_line_validity(vals):
+		#Check if line is valid
+        if not check_line_validity(line):
             continue
+
+		#Split by colon (the delimiter)
+        vals = line.split(":")
 
         #This is a voiceserver
         if len(vals) == 6:
@@ -131,21 +130,23 @@ class VatsimData(object):
 
     def __init__(self):
         #stores latest file dictionary that has file data and time updated
-        self.latest_file = None
         #Get latest cached file, which returns latest saved file
         #on disk. If none exists, it returns a dummy blank file
-        self.get_latest_cached_file()
-        #Update the file (function will update if necessary)
-        self.update_file()
+        self.latest_file = self.latest_cached_file()
 
-    def get_latest_cached_file(self):
-        ''' get_latest_cached_file() returns the latest file available on disk
+		#Check cache freshness; call download if needed
+        if (self.latest_file["time_updated"] + 120) < int(time.time()):
+	        #Update the file
+	        self.update_file()
+
+    def latest_cached_file(self):
+        ''' latest_cached_file() returns the latest file available on disk
         or returns a dummy blank file with time_updated of 0. '''
         file_path = "vatsim_data.txt"
 
         #See if file exists
         if not os.path.isfile(file_path):
-            self.latest_file = {'time_updated': 0, 'data': None}
+            return {'time_updated': 0, 'data': None}
         else:
             #Return file from disk
             with open(file_path) as f:
@@ -154,20 +155,16 @@ class VatsimData(object):
         return self.latest_file
 
     def update_file(self):
-        '''update_file() checks for data freshness in the local cache and if
-        data is too old, then it fetches new data. It then returns freshest data'''
+        '''update_file() fetches new data. It then returns freshest data'''
+        #Needs updating
+        new_file = download()
 
-        #Check cache freshness; call download if needed
-        if (self.latest_file["time_updated"] + 120) < int(time.time()):
-            #Needs updating
-            new_file = download()
-
-            if new_file is not None:
-                self.latest_file["time_updated"] = int(time.time())
-                #Jsonify the data
-                self.latest_file["data"] = jsonify_data(new_file)
-            else:
-                print "Downloaded file not valid"
+        if new_file is not None:
+            self.latest_file["time_updated"] = int(time.time())
+            #Jsonify the data
+            self.latest_file["data"] = jsonify_data(new_file)
+        else:
+            print "Downloaded file not valid"
 
 ################################################################################
 

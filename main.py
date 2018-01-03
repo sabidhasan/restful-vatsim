@@ -97,15 +97,17 @@ class VoiceServers(Resource):
 
     #Define valid arguments
     args = {
-        'name': fields.Str(required=False),
-        'exactMatch': fields.Bool(required=False),
-        'limit': fields.Int(required=False, validate=(lambda x: 1 <= x <= 50))
+        "name": fields.Str(required=False),
+        "exactMatch": fields.Bool(required=False),
+        "limit": fields.Int(required=False, validate=(lambda x: 1 <= x <= 50)),
+        #forceUpdate forces a download of a new file
+        "forceUpdate": fields.Bool(required=False)
     }
 
     @use_args(args)
     def get(self, request_arguments):
         #Create voice server class
-        voice_server = VoiceServer()
+        voice_server = VoiceServer(force_update=request_arguments["forceUpdate"])
         #Filter based on parameters
         return voice_server.filter(params=request_arguments)
 
