@@ -4,6 +4,7 @@
     #/api/v1/voiceServers?name=London                                only servers with "london" as name
     #/api/v1/voiceServers?name=London&exactMatch=true                match exactly
     #/api/v1/voiceServers?limit=5                                    limit to 5
+    #/api/v1/voiceServers?forceUpdate=True                                    force a cache file update
 
 #PILOTS (client type is pilot)
     #/api/v1/pilots                                                  all pilots
@@ -106,8 +107,10 @@ class VoiceServers(Resource):
 
     @use_args(args)
     def get(self, request_arguments):
-        #Create voice server class
-        voice_server = VoiceServer(force_update=request_arguments["forceUpdate"])
+        #force is the forceUpdate parameter (if provided by user in request arguments)
+        force = request_arguments["forceUpdate"] if "forceUpdate" in request_arguments else False
+        #Create voice server class, passing it forceUpdate
+        voice_server = VoiceServer(force_update=force)
         #Filter based on parameters
         return voice_server.filter(params=request_arguments)
 

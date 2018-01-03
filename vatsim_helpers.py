@@ -128,14 +128,14 @@ class VatsimData(object):
         "controllers": "CONTROLLERS contains information about connected controllers"
     }
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         #stores latest file dictionary that has file data and time updated
         #Get latest cached file, which returns latest saved file
-        #on disk. If none exists, it returns a dummy blank file
+        #on disk. If none exists, it returns a dummy
         self.latest_file = self.latest_cached_file()
 
-		#Check cache freshness; call download if needed
-        if (self.latest_file["time_updated"] + 120) < int(time.time()):
+		#Check cache freshness - call download if needed (or if forced update is true)
+        if (self.latest_file["time_updated"] + 120) < int(time.time()) or kwargs["force_update"]:
 	        #Update the file
 	        self.update_file()
 
@@ -170,9 +170,9 @@ class VatsimData(object):
 
 class VoiceServer(VatsimData, object):
     ''' Use this for '''
-    def __init__(self):
+    def __init__(self, **kwargs):
 #        VatsimData.__init__(self)
-        super(VoiceServer, self).__init__()
+        super(VoiceServer, self).__init__(**kwargs)
         self.full_name = "voice_servers"
 
 
