@@ -171,11 +171,11 @@ class VatsimData(object):
 
 ################################################################################
 
-class voiceServer(VatsimData):
+class VoiceServer(VatsimData, object):
     ''' Use this for '''
     def __init__(self):
 #        VatsimData.__init__(self)
-        super(test, self).__init__()
+        super(VoiceServer, self).__init__()
         self.full_name = "voice_servers"
 
 

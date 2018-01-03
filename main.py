@@ -1,3 +1,4 @@
+''' Docs '''
 #VOICE SERVER
     #/api/v1/voiceServers
     #/api/v1/voiceServers?name=London                                only servers with "london" as name
@@ -87,45 +88,33 @@ api = Api(app)
 ####### jsonify data reads data from pilots and contorllers too
 #######
 
-#Restful routes
+
+
+################################################################################
+
 class VoiceServers(Resource):
-    #Build valid arguments dictionary
+    ''' Route for /api/v1/VoiceServers[?params] '''
+
+    #Define valid arguments
     args = {
         'name': fields.Str(required=False),
         'exactMatch': fields.Bool(required=False),
         'limit': fields.Int(required=False, validate=(lambda x: 1 <= x <= 50))
     }
 
-    #def __init__(self):
-#        super(VoiceServers, self).__init__()
-#        self.full_name = "voice_servers"
-
     @use_args(args)
     def get(self, request_arguments):
-        #Create class definition
-        voice_server = voiceServer()
-
+        #Create voice server class
+        voice_server = VoiceServer()
         #Filter based on parameters
-        return_data = voice_server.filter(params=request_arguments)
-        #filter_data(latest_file, filter="voice_servers", params=request_arguments)
+        return voice_server.filter(params=request_arguments)
 
 
-
-        return return_data
-        #Validate keyword arguments
-
-        #Build complete list
-
-        #Filter if needed
-
-        #if name:
-    #        return {'name': name, 'exactMatch': exactMatch, 'limit': limit}
-#        else:
-        #    return {'none': "none"}
-
-        #Return list as found
+################################################################################
 
 api.add_resource(VoiceServers, '/api/v1/voiceServers')
+
+################################################################################
 
 @parser.error_handler
 def handle_request_parsing_error(err):#
@@ -141,7 +130,7 @@ def handle_request_parsing_error(err):#
     current_error = {"*" + error + "* Parameter": errors[error] for error in err[0]}
     abort(422, errors=current_error)
 
-
+################################################################################
 
 if __name__ == '__main__':
     app.run(debug=True)
