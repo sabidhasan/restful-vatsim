@@ -8,12 +8,12 @@ import time, random, requests, os
 def download():
     '''download() tries to download the latest vatsim data from a list of
     randomized servers to distribute server load'''
+
     #list of sources to download from
     vatsim_urls = ["http://info.vroute.net/vatsim-data.txt", "http://data.vattastic.com/vatsim-data.txt", \
             "http://vatsim.aircharts.org/vatsim-data.txt", "http://vatsim-data.hardern.net/vatsim-data.txt", \
             "http://wazzup.flightoperationssystem.com/vatsim/vatsim-data.txt"]
     random_url = random.choice(vatsim_urls)
-
     #Download page and save it to disk
     try:
         data = requests.get(random_url).text.encode('utf-8')
@@ -32,6 +32,7 @@ def download():
 def check_line_validity(line):
     ''' check_line_validity() recieves a line in the VATSIM raw data and the
 	function returns true if it's valid and false if it is not '''
+
     line = line.split(":")
     try:
         #Check for VATSIM comments; these are not valid. First character of first
@@ -57,15 +58,13 @@ def prettify_data(line, **kwargs):
     "pilot", "controller" or "voice_servers" '''
 
     if kwargs["type"] == "voice_servers":
-        return {"Location": line[0], "IP Address": line[1], "Name": line[2],
+        return {"Location": line[1], "Address": line[0], "Name": line[2],
         "Host Name": line[3], "Clients Allowed": line[4]}
-
     elif kwargs["type"] == "controllers":
         return {"Callsign": line[0], "Vatsim ID": line[1], \
         "Real Name": line[2], "Frequency": line[4], "Latitude": line[5], \
         "Longitude": line[6], "Visible Range": line[19], "ATIS": \
         line[35], "Login Time": line[37]}
-
     elif kwargs["type"] == "pilots":
         return {"Callsign": line[0], "Vatsim ID": line[1], "Real Name": line[2], \
         "Latitude": line[5], "Longitude": line[6], "Login Time": line[37], \
@@ -87,28 +86,23 @@ def jsonify_data(data):
         "voice_servers": [],
         "controllers": []
     }
-
     #Loop through line by line
     for line in data.split("\n"):
 		#Check if line is valid
         if not check_line_validity(line):
             continue
-
 		#Split by colon (the delimiter)
         vals = line.split(":")
-
         #This is a voiceserver
         if len(vals) == 6:
             # Construct dictionary of this line + append to parsed data
             curr_data = prettify_data(vals, type="voice_servers")
             parsed_data["voice_servers"].append(curr_data)
-
         #ATC found
         elif vals[3] == "ATC":
             #Construct dictionary of this line, and append to parsed data
             curr_data = prettify_data(vals, type="controllers")
             parsed_data["controllers"].append(curr_data)
-
         #pilot found
         elif vals[3] == "PILOT":
             #Construct dictionary of this line
@@ -127,7 +121,6 @@ class VatsimData(object):
         "pilots": "PILOTS contains information about all connected pilots",
         "controllers": "CONTROLLERS contains information about connected controllers"
     }
-
     def __init__(self, **kwargs):
         #stores latest file dictionary that has file data and time updated
         #Get latest cached file, which returns latest saved file
@@ -138,7 +131,6 @@ class VatsimData(object):
         if (self.latest_file["time_updated"] + 120) < int(time.time()) or kwargs["force_update"]:
 	        #Update the file
 	        self.update_file()
-
     def latest_cached_file(self):
         ''' latest_cached_file() returns the latest file available on disk
         or returns a dummy blank file with time_updated of 0. '''
@@ -153,7 +145,6 @@ class VatsimData(object):
                 data = jsonify_data(f.read())
                 self.latest_file = {'time_updated': os.path.getmtime(file_path), 'data': data}
         return self.latest_file
-
     def update_file(self):
         '''update_file() fetches new data. It then returns freshest data'''
         #Needs updating
@@ -169,13 +160,11 @@ class VatsimData(object):
 ################################################################################
 
 class VoiceServer(VatsimData, object):
-    ''' Use this for '''
+    ''' Use this class for accessing Voice Server data '''
+
     def __init__(self, **kwargs):
-#        VatsimData.__init__(self)
         super(VoiceServer, self).__init__(**kwargs)
         self.full_name = "voice_servers"
-
-
     def filter(self, **kwargs):
         ''' Filters the data-set based on kwargs (see docs for kwarg help) '''
 
@@ -183,7 +172,6 @@ class VoiceServer(VatsimData, object):
             "Time Updated (UTC)": int(self.latest_file["time_updated"]),
             "Info": self.boiler_plate[self.full_name]
         }]
-
         #Loop through relevant data (pilots, controllers or voice servers)
         for item in self.latest_file["data"][self.full_name]:
             #Look at kwargs
@@ -196,7 +184,6 @@ class VoiceServer(VatsimData, object):
             elif "name" not in kwargs["params"]:
                 #No name supplied
                 curr_data.append(item)
-
         #Deal with limit. We use +1 because the first object is always info
         #about the file
         if "limit" in kwargs["params"]:
@@ -206,12 +193,10 @@ class VoiceServer(VatsimData, object):
             curr_data[0]["Number of Records"] = len(curr_data)
             return curr_data
 
+################################################################################
 
-
-
-
-
-
+class Pilot(VatsimData, object):
+    ''' Use this class for accessing pilot data '''
 
 def flightlevel_to_feet(flightlevel):
     '''The flightlevel_to_feet() function recieves something like 'FL360' or 1500
@@ -220,7 +205,6 @@ def flightlevel_to_feet(flightlevel):
     #No altitude specified, so assume it is 0
     if not(flightlevel):
         return 0
-
     flightlevel = str(flightlevel).lower()
     if "fl" in flightlevel or "f" in flightlevel:
         #Sometimes, pilots put "VFR" for altitude, so this code will execute, but

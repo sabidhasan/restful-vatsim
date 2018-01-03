@@ -1,11 +1,4 @@
 ''' Docs '''
-#VOICE SERVER
-    #/api/v1/voiceServers
-    #/api/v1/voiceServers?name=London                                only servers with "london" as name
-    #/api/v1/voiceServers?name=London&exactMatch=true                match exactly
-    #/api/v1/voiceServers?limit=5                                    limit to 5
-    #/api/v1/voiceServers?forceUpdate=True                                    force a cache file update
-
 #PILOTS (client type is pilot)
     #/api/v1/pilots                                                  all pilots
 
@@ -62,12 +55,6 @@
     #/api/v1/controllers/alltypes/?logontime<="now-5h4m"                             relative time (use h, m)
     #/api/v1/controllers/alltypes/?logontime>"38947389473"                           unix time
 
-#return shoyld always have update time
-
-
-
-
-
 #Module imports
 from flask import Flask
 from flask_restful import Resource, Api
@@ -83,18 +70,17 @@ api = Api(app)
 
 
 #######TO--DO
-####### filter data needs to learn hwo to filtervoice server, pilot, controllers
+####### filter data needs to learn hwo to filter pilot, controllers
 ####### class pilots and controllers for their "routes" in flask
 ####### make class for latest file, rather than object
 ####### jsonify data reads data from pilots and contorllers too
 #######
 
 
-
 ################################################################################
 
 class VoiceServers(Resource):
-    ''' Route for /api/v1/VoiceServers[?params] '''
+    ''' Route for /api/v1/VoiceServers[?params]. See docs for params usage '''
 
     #Define valid arguments
     args = {
@@ -114,10 +100,62 @@ class VoiceServers(Resource):
         #Filter based on parameters
         return voice_server.filter(params=request_arguments)
 
+################################################################################
+
+class Pilots(Resource):
+    ''' Route for /api/v1/Pilots/[?params]. See docs for params usage '''
+
+    #Define valid arguments
+    args = {
+        "fields": fields.Str(required=False),
+        "callsign": fields.Str(required=False),
+        "real_name": fields.Str(required=False),
+        "min_latitude": fields.Float(required=False),
+        "max_latitude": fields.Float(required=False),
+        "min_longitude": fields.Float(required=False),
+        "max_longitude": fields.Float(required=False),
+        "min_altitude": fields.Int(required=False),
+        "max_altitude": fields.Int(required=False),
+        "min_speed": fields.Int(required=False),
+        "max_speed": fields.Int(required=False),
+        "min_heading": fields.Int(required=False),
+        "max_heading": fields.Int(required=False),
+        "dep_airport": fields.Str(required=False),
+        "arr_airport": fields.Str(required=False),
+        "in_route": fields.Str(required=False),
+        "logon_time": fields.Int(required=False)
+    }
+
+    @use_args(args)
+    def get(self, args, test3):
+        return {1:1}
+
+# No 2nd one?        make it "alltypes"
+# 2nd one Num        make it "alltypes" and append the Number
+# 2nd one alltypes   check for third one (number), and then filters
+# 2nd one VFR        filter by VFR then check for third one (number), and then filters
+# 2nd one IFR        filter by IFR then check for third one (number), and then filters
+#
+#                                 /pilots/IFR/?-----
+#                                 /pilots/IFR/50000/?----
+#
+#                                 /pilots/VFR/?----
+#                                 /pilots/VFR/50000/?----
+#
+#                                 /pilots/alltypes/?----
+#                                 /pilots/alltypes/50000/?----
+#
+#                                 /pilots/?----
+#                                 /pilots/50000/?----
+
+
 
 ################################################################################
 
 api.add_resource(VoiceServers, '/api/v1/voiceServers')
+api.add_resource(Pilots, '/api/v1/pilots', '/api/v1/pilots/<int:cid>', '/api/v1/pilots/alltypes', '/api/v1/pilots/VFR', '/api/v1/pilots/IFR')
+
+
 
 ################################################################################
 
@@ -128,7 +166,8 @@ def handle_request_parsing_error(err):#
     errors = {
         "exactMatch": "The 'exactMatch' parameter must be a boolean (true/false). Invalid value supplied.",
         "limit": "The 'Limit' parameter must be a number from 1 to 50.",
-        "name": "'Name' parameter must be string."
+        "name": "'Name' parameter must be string.",
+        "forceUpdate": "'forceUpdate' parameter must be True or False"
     }
 
     #Customize errors and abort request
