@@ -147,7 +147,7 @@ class VatsimData(object):
         try:
             return self.latest_file["data"]
         except:
-            return none
+            return None
     def latest_cached_file(self):
         ''' latest_cached_file() returns the latest file available on disk
         or returns a dummy blank file with time_updated of 0. '''
@@ -225,14 +225,11 @@ class Pilot(VatsimData, object):
         static_url = self.root_path + self.full_name + "/"
         self.base_url = str(page_url).replace(static_url, "")
 
-        #Sanitize the URL - if missing a parameter then add it
-        # if len(self.base_url.split("/") == 1):
-        #
-        # else:
-        #     #length must be 2, so it contains a type and cid
-
+        #Basic filtration parameters to help filtration function with non-keyword
+        #argument filters (these are hard coded into URL)
+        instrument_rating = self.base_url.split("/")[0] if self.base_url.split("/")[0] != "alltypes" else ""
         self.basic_filtration_parameters = {
-            "instrument_rating": self.base_url.split("/")[0],
+            "instrument_rating": instrument_rating,
             "cid": cid
         }
 
@@ -259,7 +256,7 @@ class Pilot(VatsimData, object):
         #return self.latest_file["data"][self.full_name]
         # #Loop through relevant data (pilots, controllers or voice servers)
         for item in self.latest_data[self.full_name]:
-            curr_data.append(item)
+
         #     #Look at kwargs
         #     if "name" in kwargs["params"]:
         #         if "exactMatch" in kwargs["params"] and kwargs["params"]["name"] == item["Name"]:
@@ -282,7 +279,7 @@ class Pilot(VatsimData, object):
 
 
 
-        return curr_data
+        return self.basic_filtration_parameters
 
 
 def flightlevel_to_feet(flightlevel):
