@@ -208,18 +208,29 @@ class VoiceServer(VatsimData, object):
 class Pilot(VatsimData, object):
     ''' Use this class for accessing pilot data '''
 
-    def __init__(self, page_url, **kwargs):
+    def __init__(self, page_url = "", cid=None, **kwargs):
         super(Pilot, self).__init__(**kwargs)
         #For accessing boiler_plate text, etc.
         self.full_name = "pilots"
         #Generate base URL (stripping the constant portion) - root path from
-        #parent class,
-        self.static_url = self.root_path + self.full_name + "/"
-        self.base_url = str(page_url).replace(self.static_url, "")
+        #parent class
+        static_url = self.root_path + self.full_name + "/"
+        self.base_url = str(page_url).replace(static_url, "")
 
+        #Sanitize the URL - if missing a parameter then add it
+        # if len(self.base_url.split("/") == 1):
+        #
+        # else:
+        #     #length must be 2, so it contains a type and cid
+
+        self.basic_filtration_parameters = {
+            "instrument_rating": self.base_url.split("/")[0],
+            "cid": cid
+        }
+
+        #Paths for routing accessible for flask restful
         self.paths = [
-              self.root_path + self.name,
-              self.root_path + self.full_name + '/<int:cid>',
+              self.root_path + self.full_name,
               self.root_path + self.full_name + '/alltypes',
               self.root_path + self.full_name + '/alltypes/<int:cid>',
               self.root_path + self.full_name + '/VFR',
@@ -227,8 +238,43 @@ class Pilot(VatsimData, object):
               self.root_path + self.full_name + '/IFR',
               self.root_path + self.full_name + '/IFR/<int:cid>'
         ]
-        
+
+       # return {1: self.base_url}
+
         #ifr, vfr, alltypes, nothing, number
+    def filter(self, **kwargs):
+        curr_data = [{
+            "Time Updated (UTC)": int(self.latest_file["time_updated"]),
+            "Info": self.boiler_plate[self.full_name]
+        }]
+
+        return self.latest_file["data"][self.full_name]
+
+        # #Loop through relevant data (pilots, controllers or voice servers)
+        # for item in self.latest_file["data"][self.full_name]:
+        #     #Look at kwargs
+        #     if "name" in kwargs["params"]:
+        #         if "exactMatch" in kwargs["params"] and kwargs["params"]["name"] == item["Name"]:
+        #             curr_data.append(item)
+        #         elif "exactMatch" not in kwargs["params"] and kwargs["params"]["name"] in item["Name"]:
+        #             curr_data.append(item)
+        #
+        #     elif "name" not in kwargs["params"]:
+        #         #No name supplied
+        #         curr_data.append(item)
+        # #Deal with limit. We use +1 because the first object is always info
+        # #about the file
+        # if "limit" in kwargs["params"]:
+        #     curr_data[0]["Number of Records"] = kwargs["params"]["limit"]
+        #     return curr_data[:kwargs["params"]["limit"]+1]
+        # else:
+        #     curr_data[0]["Number of Records"] = len(curr_data)
+        #     return curr_data
+
+
+
+
+        return self.basic_filtration_parameters
 
 
 def flightlevel_to_feet(flightlevel):

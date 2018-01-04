@@ -130,10 +130,10 @@ class Pilots(Resource):
     def get(self, request_arguments, cid=None):
          #force is the forceUpdate parameter (if provided by user in request arguments)
          force = request_arguments["forceUpdate"] if "forceUpdate" in request_arguments else False
-         #Create pilot class, passing it forceUpdate
-         vatsim_pilots = Pilot(request.url_rule, force_update=force)
+         #Create pilot class, passing it url, cid and forceUpdate
+         vatsim_pilots = Pilot(request.url_rule, cid, force_update=force)
 
-         return {1: str(request.url_rule)}
+         return vatsim_pilots.filter()
 
 # No 2nd one?        make it "alltypes"
 # 2nd one Num        make it "alltypes" and append the Number
@@ -157,11 +157,9 @@ class Pilots(Resource):
 
 ################################################################################
 
-api.add_resource(VoiceServers, *VoiceServer().paths) #'/api/v1/voiceServers')
-api.add_resource(Pilots, *['/api/v1/pilots', '/api/v1/pilots/<int:cid>', \
-    '/api/v1/pilots/alltypes', '/api/v1/pilots/alltypes/<int:cid>', \
-    '/api/v1/pilots/VFR', '/api/v1/pilots/VFR/<int:cid>', '/api/v1/pilots/IFR', \
-    '/api/v1/pilots/IFR/<int:cid>'])
+#add resources for relavant API paths. Get path list from respective classes
+api.add_resource(VoiceServers, *VoiceServer().paths)
+api.add_resource(Pilots, *Pilot().paths)
 
 
 
