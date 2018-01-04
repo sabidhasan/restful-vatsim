@@ -34,6 +34,7 @@
 #/api/v1/pilots/alltypes/?dep_airport="CYVR"
 #/api/v1/pilots/alltypes/?arr_airport="CYVR"
 #/api/v1/pilots/alltypes/?in_route="YVR"                                    route contains yvr
+#/api/v1/pilots/alltypes/?aircraft="B777"                                   aircraft contains B777
 
 #/api/v1/pilots/alltypes/?min_logontime="now-5h4m"                             relative time (use h, m)
 #/api/v1/pilots/alltypes/?max_logontime="38947389473"                           unix time

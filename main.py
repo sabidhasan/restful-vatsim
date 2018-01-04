@@ -1,6 +1,6 @@
 ''' Docs '''
 #PILOTS (client type is pilot)
-    
+
 
 #CENTERS (client type is center)
     #/api/v1/controllers/                                               all atc
@@ -97,7 +97,9 @@ class Pilots(Resource):
         "dep_airport": fields.Str(required=False),
         "arr_airport": fields.Str(required=False),
         "in_route": fields.Str(required=False),
-        "logon_time": fields.Int(required=False),
+        "min_logontime": fields.Int(required=False),
+        "max_logontime": fields.Int(required=False),
+        "aircraft": fields.Str(required=False),
         "limit": fields.Int(required=False, validate=(lambda x: 1 <= x <= 50)),
         #forceUpdate forces a download of a new file
         "forceUpdate": fields.Bool(required=False)

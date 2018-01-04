@@ -261,15 +261,22 @@ class Pilot(VatsimData, object):
         #Comparison looks at local line and applies a comparator function
         #to compare it to user requested parameter. "in" keyword requires a
         #custom within function, because it's a keyword not a first order function\
+        try:
+            local_data_value = float(local_data_value)
+            user_requested_value = float(user_requested_value)
+        except ValueError:
+            pass
+
         if comparator_function(local_data_value, user_requested_value) == user_requested_value:
             return True
         return False
 
-     def within(self, local_data_value, user_requested_value):
+    def within(self, local_data_value, user_requested_value):
          ''' within() is a make-do first order function for the in keyword '''
+
          if user_requested_value in local_data_value:
-            return local_data_value
-        return user_requested_value
+            return user_requested_value
+         return local_data_value
 
     def filter(self, **kwargs):
         ''' Filters the data-set based on kwargs (see docs for kwarg help) '''
@@ -295,57 +302,76 @@ class Pilot(VatsimData, object):
                 curr_data = [curr_data[0]] + [item]
                 break
 
-            #Run custom Filters
-            #Match these items roughly (if search term appears anywhere)
-            local_data_to_api_names = {
-                "Callsign": {"user_api_name": "callsign", "comparator": within},
-                "Real Name": {"user_api_name": "realname", "comparator": within},
-                "Planned Departure Airport": {"user_api_name": "dep_airport", comparator: within},
-                "Planned Destination Airport": {"user_api_name": "arr_airport", comparator: within},
-                "Route": {"user_api_name": "in_route", comparator: within},
+            # if not include:
+            #     #We have excluded based on basic parameters, so filter will fail
+            #     continue
 
+            #Run custom Filters
+            api_names_to_local_data = {
+                "callsign": {"db_name": "Callsign", "comparator": self.within},
+                "realname": {"db_name": "Real Name", "comparator": self.within},
+                "dep_airport": {"db_name": "Planned Departure Airport", "comparator": self.within},
+                "arr_airport": {"db_name": "Planned Destination Airport", "comparator": self.within},
+                "in_route": {"db_name": "Route", "comparator": self.within},
+                "aircraft": {"db_name": "Planned Aircraft", "comparator": self.within},
+
+                "min_latitude": {"db_name": "Latitude", "comparator": max},
+                "max_latitude": {"db_name": "Latitude", "comparator": min},
+                "min_longitude":  {"db_name": "Longitude", "comparator": max},
+                "max_longitude":  {"db_name": "Longitude", "comparator": min},
+                "min_speed": {"db_name": "Ground Speed", "comparator": max},
+                "max_speed": {"db_name": "Ground Speed", "comparator": min},
+                "min_altitude": {"db_name": "Altitude", "comparator": max},
+                "max_altitude": {"db_name": "Altitude", "comparator": min},
+                "min_heading": {"db_name": "Heading", "comparator": max},
+                "max_heading": {"db_name": "Heading", "comparator": min}
             }
 
+            #These must match by the end. If not, then this current line doesnt match
+            requested_values = 0
+            matched_values = 0
+            #Compare all possible filter keywords
+            for filter_param in api_names_to_local_data:
+                if filter_param in kwargs["params"]:
+                    #This parameter is requested, so update requested variable
+                    requested_values += 1
+
+                    try:
+                        #If string, then remove quotation marks
+                        user_requested_value = kwargs["params"][filter_param].replace("\"", "").replace("'", "")
+                    except AttributeError:
+                        #This is a non-string (likely float), so keep as is
+                        user_requested_value = kwargs["params"][filter_param]
+                    #Name for key in the local database
+                    db_name = api_names_to_local_data[filter_param]["db_name"]
+                    #The comparator function used to compare these
+                    comparator_function = api_names_to_local_data[filter_param]["comparator"]
+
+                    if self.compare(item[db_name], user_requested_value, comparator_function):
+                        #This matches!! So let's add one to matched values
+                        matched_values += 1
+            if item["Callsign"] == 'AAL106':
+                0/0
+            #Loop is done, if values match and we hadnt excluded previously
+            if requested_values == matched_values and include:
+                include = True
+            elif requested_values != matched_values:
+                include = False
             #time
+                # Login Time        min_logontime
+                # Login Time        max_logontime
+            #/api/v1/pilots/alltypes/?="now-5h4m"                             relative time (use h, m)
+            #/api/v1/pilots/alltypes/?max_logontime="38947389473"                           unix time
 
             if include:
-
                 #TO--DO: look at fields   #/api/v1/pilots/alltypes/?fields=groundspeed,heading                  only return specific fields
 
-                curr_data.append({"Txt": item["Vatsim ID"], "user": self.basic_filtration_parameters["cid"]})
-                # curr_data.append(item)
- # "": line[2], \
- # "Latitude": line[5], "Longitude": line[6], "Login Time": line[37], \
- # "Altitude": line[7], "Ground Speed": line[8], "Heading": line[38], \
- # "Remarks": line[29], "Planned Aircraft": line[9], \
- # "Planned Altitude": flightlevel_to_feet(line[12]), \
- # "Flight Type": line[21], "Planned Departure Time":
-
-#/api/v1/pilots/alltypes/?min_latitude=50&maxlatitude=100                   identify by latitude
-#/api/v1/pilots/alltypes/?min_longitude=50&maxlongitude=100                 identify by latitude
-#/api/v1/pilots/alltypes/?min_altitude=0&maxaltitude=FL100                  identify by altitude
-#/api/v1/pilots/alltypes/?min_speed=0&maxspeed=0
-#/api/v1/pilots/alltypes/?min_heading=0&maxheading=100
-
-
-#/api/v1/pilots/alltypes/?min_logontime="now-5h4m"                             relative time (use h, m)
-#/api/v1/pilots/alltypes/?max_logontime="38947389473"                           unix time
+                # curr_data.append({"Txt": item["Vatsim ID"], "user": self.basic_filtration_parameters["cid"]})
+                curr_data.append(item)
 
 
 
-
-        #     #Look at kwargs
-        #     if "name" in kwargs["params"]:
-        #         if "exactMatch" in kwargs["params"] and kwargs["params"]["name"] == item["Name"]:
-        #             curr_data.append(item)
-        #         elif "exactMatch" not in kwargs["params"] and kwargs["params"]["name"] in item["Name"]:
-        #             curr_data.append(item)
-        #
-        #     elif "name" not in kwargs["params"]:
-        #         #No name supplied
-        #         curr_data.append(item)
-        # #Deal with limit. We use +1 because the first object is always info
-        # #about the file
+        #about the file
         if "limit" in kwargs["params"]:
             curr_data[0]["Number of Records"] = kwargs["params"]["limit"]
             return curr_data[:kwargs["params"]["limit"] + 1]
