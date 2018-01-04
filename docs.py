@@ -25,15 +25,15 @@
 #/api/v1/pilots/alltypes/?callsign="AA"                                    callsign contains "AA"
 #/api/v1/pilots/alltypes/?realname="Test"                                  identify by exact name
 
-#/api/v1/pilots/alltypes/?min_latitude=50&maxlatitude=100                   identify by latitude
-#/api/v1/pilots/alltypes/?min_longitude=50&maxlongitude=100                 identify by latitude
-#/api/v1/pilots/alltypes/?min_altitude=0&maxaltitude=FL100                  identify by altitude
-#/api/v1/pilots/alltypes/?min_speed=0&maxspeed=0
-#/api/v1/pilots/alltypes/?min_heading=0&maxheading=100
+#/api/v1/pilots/alltypes/?min_latitude=50&max_latitude=100                   identify by latitude
+#/api/v1/pilots/alltypes/?min_longitude=50&max_longitude=100                 identify by latitude
+#/api/v1/pilots/alltypes/?min_altitude=0&max_altitude=FL100                  identify by altitude
+#/api/v1/pilots/alltypes/?min_speed=0&max_speed=0
+#/api/v1/pilots/alltypes/?min_heading=0&max_heading=100
 
 #/api/v1/pilots/alltypes/?dep_airport="CYVR"
 #/api/v1/pilots/alltypes/?arr_airport="CYVR"
 #/api/v1/pilots/alltypes/?in_route="YVR"                                    route contains yvr
 
-#/api/v1/pilots/alltypes/?logontime<="now-5h4m"                             relative time (use h, m)
-#/api/v1/pilots/alltypes/?logontime>"38947389473"                           unix time
+#/api/v1/pilots/alltypes/?min_logontime="now-5h4m"                             relative time (use h, m)
+#/api/v1/pilots/alltypes/?max_logontime="38947389473"                           unix time
