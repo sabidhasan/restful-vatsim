@@ -61,12 +61,12 @@ def prettify_data(line, **kwargs):
         return {"Location": line[1], "Address": line[0], "Name": line[2],
         "Host Name": line[3], "Clients Allowed": line[4]}
     elif kwargs["type"] == "controllers":
-        return {"Callsign": line[0], "Vatsim ID": line[1], \
+        return {"Callsign": line[0], "Vatsim ID": int(line[1]), \
         "Real Name": line[2], "Frequency": line[4], "Latitude": line[5], \
         "Longitude": line[6], "Visible Range": line[19], "ATIS": \
         line[35], "Login Time": line[37]}
     elif kwargs["type"] == "pilots":
-        return {"Callsign": line[0], "Vatsim ID": line[1], "Real Name": line[2], \
+        return {"Callsign": line[0], "Vatsim ID": int(line[1]), "Real Name": line[2], \
         "Latitude": line[5], "Longitude": line[6], "Login Time": line[37], \
         "Altitude": line[7], "Ground Speed": line[8], "Heading": line[38], \
         "Route": line[30], "Remarks": line[29], "Planned Aircraft": line[9], \
@@ -113,7 +113,7 @@ def jsonify_data(data):
 ################################################################################
 
 class VatsimData(object):
-    ''' Generic parent class for voiceServer, pilots and controllers '''
+    ''' Generic base class for voiceServer, pilots and controllers '''
 
     #Boiler plate text that will get added to returned objects
     boiler_plate = {
@@ -146,7 +146,8 @@ class VatsimData(object):
         #Property to return latest file's data
         try:
             return self.latest_file["data"]
-        except:
+        #The latest file must not be defined yet
+        except KeyError:
             return None
     def latest_cached_file(self):
         ''' latest_cached_file() returns the latest file available on disk
@@ -180,18 +181,18 @@ class VoiceServer(VatsimData, object):
 
     def __init__(self, **kwargs):
         super(VoiceServer, self).__init__(**kwargs)
-        self.full_name = "voice_servers"
-        self.paths = [self.root_path + self.full_name]
+        self.verbose_name = "voice_servers"
+        self.paths = [self.root_path + self.verbose_name]
 
     def filter(self, **kwargs):
         ''' Filters the data-set based on kwargs (see docs for kwarg help) '''
 
         curr_data = [{
             "Time Updated (UTC)": int(self.latest_file["time_updated"]),
-            "Info": self.boiler_plate[self.full_name]
+            "Info": self.boiler_plate[self.verbose_name]
         }]
         #Loop through relevant data (pilots, controllers or voice servers)
-        for item in self.latest_data[self.full_name]:
+        for item in self.latest_data[self.verbose_name]:
             #Look at kwargs
             if "name" in kwargs["params"]:
                 if "exactMatch" in kwargs["params"] and kwargs["params"]["name"] == item["Name"]:
@@ -208,7 +209,7 @@ class VoiceServer(VatsimData, object):
             curr_data[0]["Number of Records"] = kwargs["params"]["limit"]
             return curr_data[:kwargs["params"]["limit"]+1]
         else:
-            curr_data[0]["Number of Records"] = len(curr_data)
+            curr_data[0]["Number of Records"] = len(curr_data) - 1
             return curr_data
 
 ################################################################################
@@ -216,46 +217,82 @@ class VoiceServer(VatsimData, object):
 class Pilot(VatsimData, object):
     ''' Use this class for accessing pilot data '''
 
-    def __init__(self, page_url = "", cid=None, **kwargs):
+    def __init__(self, page_url="", cid=None, **kwargs):
         super(Pilot, self).__init__(**kwargs)
         #For accessing boiler_plate text, etc.
-        self.full_name = "pilots"
+        self.verbose_name = "pilots"
         #Generate base URL (stripping the constant portion) - root path from
         #parent class
-        static_url = self.root_path + self.full_name + "/"
+        static_url = self.root_path + self.verbose_name + "/"
         self.base_url = str(page_url).replace(static_url, "")
 
         #Basic filtration parameters to help filtration function with non-keyword
         #argument filters (these are hard coded into URL)
-        instrument_rating = self.base_url.split("/")[0] if self.base_url.split("/")[0] != "alltypes" else ""
+        try:
+            if self.base_url.split("/")[0] == "alltypes":
+                #This is really a custom type, so make it "unknown"
+                raise IndexError
+            #first letter should be the flight code ("IFR" => "I" or "VFR -> "V")
+            instrument_rating = self.base_url.split("/")[0][0]
+        except IndexError:
+            instrument_rating = ""
+
         self.basic_filtration_parameters = {
-            "instrument_rating": instrument_rating,
+            "rating": instrument_rating,
             "cid": cid
         }
 
         #Paths for routing accessible for flask restful
         self.paths = [
-              self.root_path + self.full_name,
-              self.root_path + self.full_name + '/alltypes',
-              self.root_path + self.full_name + '/alltypes/<int:cid>',
-              self.root_path + self.full_name + '/VFR',
-              self.root_path + self.full_name + '/VFR/<int:cid>',
-              self.root_path + self.full_name + '/IFR',
-              self.root_path + self.full_name + '/IFR/<int:cid>'
+              self.root_path + self.verbose_name,
+              self.root_path + self.verbose_name + '/alltypes',
+              self.root_path + self.verbose_name + '/alltypes/<int:cid>',
+              self.root_path + self.verbose_name + '/VFR',
+              self.root_path + self.verbose_name + '/VFR/<int:cid>',
+              self.root_path + self.verbose_name + '/IFR',
+              self.root_path + self.verbose_name + '/IFR/<int:cid>'
         ]
 
-       # return {1: self.base_url}
-
-        #ifr, vfr, alltypes, nothing, number
     def filter(self, **kwargs):
+        ''' Filters the data-set based on kwargs (see docs for kwarg help) '''
+
         curr_data = [{
             "Time Updated (UTC)": int(self.latest_file["time_updated"]),
-            "Info": self.boiler_plate[self.full_name]
+            "Info": self.boiler_plate[self.verbose_name]
         }]
 
-        #return self.latest_file["data"][self.full_name]
+        #return self.latest_file["data"][self.verbose_name]
         # #Loop through relevant data (pilots, controllers or voice servers)
-        for item in self.latest_data[self.full_name]:
+        for item in self.latest_data[self.verbose_name]:
+            #Whether to include the item
+            include = False
+
+            #Match type (ifr, vfr, alltypes)
+            if (not self.basic_filtration_parameters["rating"]) or self.basic_filtration_parameters["rating"] == item["Flight Type"]:
+                include = True
+
+            #Match CID
+            if item["Vatsim ID"] == self.basic_filtration_parameters["cid"] and include:
+                #found the CID, so must include it for sure
+                curr_data = [curr_data[0]] + [item]
+                break
+
+            #Run custom Filters
+
+            #Curtail by Limit
+
+
+            if include:
+                curr_data.append({"Txt": item["Vatsim ID"], "user": self.basic_filtration_parameters["cid"]})
+                # curr_data.append(item)
+ # return {"Callsign": line[0], "Vatsim ID": line[1], "Real Name": line[2], \
+ # "Latitude": line[5], "Longitude": line[6], "Login Time": line[37], \
+ # "Altitude": line[7], "Ground Speed": line[8], "Heading": line[38], \
+ # "Route": line[30], "Remarks": line[29], "Planned Aircraft": line[9], \
+ # "Planned Departure Airport": line[11], "Planned Altitude": flightlevel_to_feet(line[12]), \
+ # "Planned Destination Airport": line[13], "Flight Type": line[21], "Planned Departure Time": \
+ # line[22]}
+
 
         #     #Look at kwargs
         #     if "name" in kwargs["params"]:
@@ -269,17 +306,12 @@ class Pilot(VatsimData, object):
         #         curr_data.append(item)
         # #Deal with limit. We use +1 because the first object is always info
         # #about the file
-        # if "limit" in kwargs["params"]:
-        #     curr_data[0]["Number of Records"] = kwargs["params"]["limit"]
-        #     return curr_data[:kwargs["params"]["limit"]+1]
-        # else:
-        #     curr_data[0]["Number of Records"] = len(curr_data)
-        #     return curr_data
-
-
-
-
-        return self.basic_filtration_parameters
+        if "limit" in kwargs["params"]:
+            curr_data[0]["Number of Records"] = kwargs["params"]["limit"]
+            return curr_data[:kwargs["params"]["limit"] + 1]
+        else:
+            curr_data[0]["Number of Records"] = len(curr_data) - 1
+            return curr_data
 
 
 def flightlevel_to_feet(flightlevel):

@@ -136,7 +136,7 @@ class Pilots(Resource):
          #Create pilot class, passing it url, cid and forceUpdate
          vatsim_pilots = Pilot(request.url_rule, cid, force_update=force)
 
-         return vatsim_pilots.filter()
+         return vatsim_pilots.filter(params=request_arguments)
 
 # No 2nd one?        make it "alltypes"
 # 2nd one Num        make it "alltypes" and append the Number
