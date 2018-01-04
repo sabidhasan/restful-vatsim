@@ -56,7 +56,7 @@
     #/api/v1/controllers/alltypes/?logontime>"38947389473"                           unix time
 
 #Module imports
-from flask import Flask
+from flask import Flask, request
 from flask_restful import Resource, Api
 #For URL arguments
 from webargs import fields, validate
@@ -96,9 +96,9 @@ class VoiceServers(Resource):
         #force is the forceUpdate parameter (if provided by user in request arguments)
         force = request_arguments["forceUpdate"] if "forceUpdate" in request_arguments else False
         #Create voice server class, passing it forceUpdate
-        voice_server = VoiceServer(force_update=force)
+        vatsim_voice_server = VoiceServer(force_update=force)
         #Filter based on parameters
-        return voice_server.filter(params=request_arguments)
+        return vatsim_voice_server.filter(params=request_arguments)
 
 ################################################################################
 
@@ -127,8 +127,13 @@ class Pilots(Resource):
     }
 
     @use_args(args)
-    def get(self, args, test3):
-        return {1:1}
+    def get(self, request_arguments, cid=None):
+         #force is the forceUpdate parameter (if provided by user in request arguments)
+         force = request_arguments["forceUpdate"] if "forceUpdate" in request_arguments else False
+         #Create pilot class, passing it forceUpdate
+         vatsim_pilots = Pilot(request.url_rule, force_update=force)
+
+         return {1: str(request.url_rule)}
 
 # No 2nd one?        make it "alltypes"
 # 2nd one Num        make it "alltypes" and append the Number
@@ -152,8 +157,11 @@ class Pilots(Resource):
 
 ################################################################################
 
-api.add_resource(VoiceServers, '/api/v1/voiceServers')
-api.add_resource(Pilots, '/api/v1/pilots', '/api/v1/pilots/<int:cid>', '/api/v1/pilots/alltypes', '/api/v1/pilots/VFR', '/api/v1/pilots/IFR')
+api.add_resource(VoiceServers, *VoiceServer().paths) #'/api/v1/voiceServers')
+api.add_resource(Pilots, *['/api/v1/pilots', '/api/v1/pilots/<int:cid>', \
+    '/api/v1/pilots/alltypes', '/api/v1/pilots/alltypes/<int:cid>', \
+    '/api/v1/pilots/VFR', '/api/v1/pilots/VFR/<int:cid>', '/api/v1/pilots/IFR', \
+    '/api/v1/pilots/IFR/<int:cid>'])
 
 
 

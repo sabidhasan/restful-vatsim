@@ -121,29 +121,37 @@ class VatsimData(object):
         "pilots": "PILOTS contains information about all connected pilots",
         "controllers": "CONTROLLERS contains information about connected controllers"
     }
+    #Path to local cache file
+    file_path = "vatsim_data.txt"
+    #constant path
+    root_path = "/api/v1/"
+
     def __init__(self, **kwargs):
         #stores latest file dictionary that has file data and time updated
         #Get latest cached file, which returns latest saved file
         #on disk. If none exists, it returns a dummy
         self.latest_file = self.latest_cached_file()
 
-		#Check cache freshness - call download if needed (or if forced update is true)
-        if (self.latest_file["time_updated"] + 120) < int(time.time()) or kwargs["force_update"]:
-	        #Update the file
-	        self.update_file()
+        try:
+    		#Check cache freshness - call download if needed (or if forced update is true)
+            if (self.latest_file["time_updated"] + 120) < int(time.time()) or kwargs["force_update"]:
+    	        #Update the file
+    	        self.update_file()
+        except KeyError:
+            #No force update parameter was provided, but we can assume it's false
+            pass
     def latest_cached_file(self):
         ''' latest_cached_file() returns the latest file available on disk
         or returns a dummy blank file with time_updated of 0. '''
-        file_path = "vatsim_data.txt"
 
         #See if file exists
-        if not os.path.isfile(file_path):
+        if not os.path.isfile(self.file_path):
             return {'time_updated': 0, 'data': None}
         else:
             #Return file from disk
-            with open(file_path) as f:
+            with open(self.file_path) as f:
                 data = jsonify_data(f.read())
-                self.latest_file = {'time_updated': os.path.getmtime(file_path), 'data': data}
+                self.latest_file = {'time_updated': os.path.getmtime(self.file_path), 'data': data}
         return self.latest_file
     def update_file(self):
         '''update_file() fetches new data. It then returns freshest data'''
@@ -165,6 +173,8 @@ class VoiceServer(VatsimData, object):
     def __init__(self, **kwargs):
         super(VoiceServer, self).__init__(**kwargs)
         self.full_name = "voice_servers"
+        self.paths = [self.root_path + self.full_name]
+
     def filter(self, **kwargs):
         ''' Filters the data-set based on kwargs (see docs for kwarg help) '''
 
@@ -197,6 +207,29 @@ class VoiceServer(VatsimData, object):
 
 class Pilot(VatsimData, object):
     ''' Use this class for accessing pilot data '''
+
+    def __init__(self, page_url, **kwargs):
+        super(Pilot, self).__init__(**kwargs)
+        #For accessing boiler_plate text, etc.
+        self.full_name = "pilots"
+        #Generate base URL (stripping the constant portion) - root path from
+        #parent class,
+        self.static_url = self.root_path + self.full_name + "/"
+        self.base_url = str(page_url).replace(self.static_url, "")
+
+        self.paths = [
+              self.root_path + self.name,
+              self.root_path + self.full_name + '/<int:cid>',
+              self.root_path + self.full_name + '/alltypes',
+              self.root_path + self.full_name + '/alltypes/<int:cid>',
+              self.root_path + self.full_name + '/VFR',
+              self.root_path + self.full_name + '/VFR/<int:cid>',
+              self.root_path + self.full_name + '/IFR',
+              self.root_path + self.full_name + '/IFR/<int:cid>'
+        ]
+        
+        #ifr, vfr, alltypes, nothing, number
+
 
 def flightlevel_to_feet(flightlevel):
     '''The flightlevel_to_feet() function recieves something like 'FL360' or 1500
