@@ -123,7 +123,10 @@ class Pilots(Resource):
         "dep_airport": fields.Str(required=False),
         "arr_airport": fields.Str(required=False),
         "in_route": fields.Str(required=False),
-        "logon_time": fields.Int(required=False)
+        "logon_time": fields.Int(required=False),
+        "limit": fields.Int(required=False, validate=(lambda x: 1 <= x <= 50)),
+        #forceUpdate forces a download of a new file
+        "forceUpdate": fields.Bool(required=False)
     }
 
     @use_args(args)

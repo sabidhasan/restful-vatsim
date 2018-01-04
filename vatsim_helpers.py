@@ -140,6 +140,14 @@ class VatsimData(object):
         except KeyError:
             #No force update parameter was provided, but we can assume it's false
             pass
+
+    @property
+    def latest_data(self):
+        #Property to return latest file's data
+        try:
+            return self.latest_file["data"]
+        except:
+            return none
     def latest_cached_file(self):
         ''' latest_cached_file() returns the latest file available on disk
         or returns a dummy blank file with time_updated of 0. '''
@@ -183,7 +191,7 @@ class VoiceServer(VatsimData, object):
             "Info": self.boiler_plate[self.full_name]
         }]
         #Loop through relevant data (pilots, controllers or voice servers)
-        for item in self.latest_file["data"][self.full_name]:
+        for item in self.latest_data[self.full_name]:
             #Look at kwargs
             if "name" in kwargs["params"]:
                 if "exactMatch" in kwargs["params"] and kwargs["params"]["name"] == item["Name"]:
@@ -248,10 +256,10 @@ class Pilot(VatsimData, object):
             "Info": self.boiler_plate[self.full_name]
         }]
 
-        return self.latest_file["data"][self.full_name]
-
+        #return self.latest_file["data"][self.full_name]
         # #Loop through relevant data (pilots, controllers or voice servers)
-        # for item in self.latest_file["data"][self.full_name]:
+        for item in self.latest_data[self.full_name]:
+            curr_data.append(item)
         #     #Look at kwargs
         #     if "name" in kwargs["params"]:
         #         if "exactMatch" in kwargs["params"] and kwargs["params"]["name"] == item["Name"]:
@@ -274,7 +282,7 @@ class Pilot(VatsimData, object):
 
 
 
-        return self.basic_filtration_parameters
+        return curr_data
 
 
 def flightlevel_to_feet(flightlevel):
