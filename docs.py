@@ -45,4 +45,5 @@ uses
 #/api/v1/pilots/alltypes/?aircraft="B777"                                   aircraft contains B777
 
 #/api/v1/pilots/alltypes/?min_logontime="now-5h4m"                             relative time (use h, m)
+        # [now,today,yesterday]-[xhym, xh, ym, zs, 786876]
 #/api/v1/pilots/alltypes/?max_logontime="38947389473"                           unix time
