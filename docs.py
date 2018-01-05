@@ -1,3 +1,11 @@
+uses
+    about to depart Aircraft
+    busiest airports
+    VA searching
+    planes flying in a certain area
+    planes violating speed rules (<250 kts <18000 ft)
+    planes heading a certain direction
+
 #VOICE SERVER
     #/api/v1/voice_servers
     #/api/v1/voice_servers?name=London                                only servers with "london" as name

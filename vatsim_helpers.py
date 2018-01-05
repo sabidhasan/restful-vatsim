@@ -255,7 +255,6 @@ class Pilot(VatsimData, object):
               self.root_path + self.verbose_name + '/IFR/<int:cid>'
         ]
 
-    #Comparator functions for filter method
     def compare(self, local_data_value, user_requested_value, comparator_function):
         ''' Called as comparator function - if user requested value is substring
         of the local_data_value then there is a match '''
@@ -272,27 +271,17 @@ class Pilot(VatsimData, object):
 
         #Check if comparator worked - it is either True or returns
         return comparator_function(local_data_value, user_requested_value)
-        # if comparator_function(local_data_value, user_requested_value):# in [local_data_value, True]:
-        #     return True
-        # return False
 
     def minimum(self, local_data_value, user_requested_value):
         ''' minimum() is a slightly modified function for min() '''
-
-        if min(local_data_value, user_requested_value) == local_data_value:
-            return True
-        return False
+        return min(local_data_value, user_requested_value) == local_data_value
 
     def maximum(self, local_data_value, user_requested_value):
         ''' maximum() is a slightly modified function for min() '''
-
-        if max(local_data_value, user_requested_value) == local_data_value:
-            return True
-        return False
+        return max(local_data_value, user_requested_value) == local_data_value
 
     def within(self, local_data_value, user_requested_value):
          ''' within() is a make-do first order function for the in keyword '''
-
          return user_requested_value in local_data_value
 
     def filter(self, **kwargs):
@@ -303,25 +292,16 @@ class Pilot(VatsimData, object):
             "Info": self.boiler_plate[self.verbose_name]
         }]
 
-        #return self.latest_file["data"][self.verbose_name]
         # #Loop through relevant data (pilots, controllers or voice servers)
         for item in self.latest_data[self.verbose_name]:
-            #Check for rating
+            #Check that if the rating exists, then it must match (if it doesnt exist then its alltypes)
+            if self.basic_filtration_parameters["rating"] and self.basic_filtration_parameters["rating"] != item["Flight Type"]:
+                 continue
 
-            #Whether to include the item
-            include = False
-            #Match type (ifr, vfr, alltypes)
-            if (not self.basic_filtration_parameters["rating"]) or self.basic_filtration_parameters["rating"] == item["Flight Type"]:
-                include = True
-            #Match CID
-            if item["Vatsim ID"] == self.basic_filtration_parameters["cid"] and include:
-                #found exact CID, so must redefine the list with only this item
+            #If the CID matches
+            if item["Vatsim ID"] == self.basic_filtration_parameters["cid"]:
                 curr_data = [curr_data[0]] + [item]
                 break
-
-            # if not include:
-            #     #We have excluded based on basic parameters, so filter will fail
-            #     continue
 
             #Run custom Filters
             api_names_to_local_data = {
@@ -331,32 +311,30 @@ class Pilot(VatsimData, object):
                 "arr_airport": {"db_name": "Planned Destination Airport", "comparator": self.within},
                 "in_route": {"db_name": "Route", "comparator": self.within},
                 "aircraft": {"db_name": "Planned Aircraft", "comparator": self.within},
-                "min_latitude": {"db_name": "Latitude", "comparator": maximum},
-                "max_latitude": {"db_name": "Latitude", "comparator": minimum},
-                "min_longitude":  {"db_name": "Longitude", "comparator": maximum},
-                "max_longitude":  {"db_name": "Longitude", "comparator": minimum},
-                "min_speed": {"db_name": "Ground Speed", "comparator": maximum},
-                "max_speed": {"db_name": "Ground Speed", "comparator": minimum},
-                "min_altitude": {"db_name": "Altitude", "comparator": maximum},
-                "max_altitude": {"db_name": "Altitude", "comparator": minimum},
-                "min_heading": {"db_name": "Heading", "comparator": maximum},
-                "max_heading": {"db_name": "Heading", "comparator": minimum}
+                "min_latitude": {"db_name": "Latitude", "comparator": self.maximum},
+                "max_latitude": {"db_name": "Latitude", "comparator": self.minimum},
+                "min_longitude":  {"db_name": "Longitude", "comparator": self.maximum},
+                "max_longitude":  {"db_name": "Longitude", "comparator": self.minimum},
+                "min_speed": {"db_name": "Ground Speed", "comparator": self.maximum},
+                "max_speed": {"db_name": "Ground Speed", "comparator": self.minimum},
+                "min_altitude": {"db_name": "Altitude", "comparator": self.maximum},
+                "max_altitude": {"db_name": "Altitude", "comparator": self.minimum},
+                "min_heading": {"db_name": "Heading", "comparator": self.maximum},
+                "max_heading": {"db_name": "Heading", "comparator": self.minimum}
             }
 
             #These must match by the end. If not, then this current line doesnt match
-            requested_values = 0
-            matched_values = 0
-            #Compare all possible filter keywords
+            requested_values, matched_values = (0, 0)
+
+            #Compare all possible filter keywords - must loop thru api_names_to_local_data
+            #because kwargs[params] has a bunch of other crap (forceUpdate, etc.)
             for filter_param in api_names_to_local_data:
                 if filter_param in kwargs["params"]:
-                    #This parameter is requested, so update requested variable
                     requested_values += 1
-
+                    #If string, then remove quotation marks (if error then its float)
                     try:
-                        #If string, then remove quotation marks
                         user_requested_value = kwargs["params"][filter_param].replace("\"", "").replace("'", "")
                     except AttributeError:
-                        #This is a non-string (likely float), so keep as is
                         user_requested_value = kwargs["params"][filter_param]
                     #Name for key in the local database
                     db_name = api_names_to_local_data[filter_param]["db_name"]
@@ -364,29 +342,43 @@ class Pilot(VatsimData, object):
                     comparator_function = api_names_to_local_data[filter_param]["comparator"]
 
                     if self.compare(item[db_name], user_requested_value, comparator_function):
-                        #This matches!! So let's add one to matched values
                         matched_values += 1
 
-            #Loop is done, if values match and we hadnt excluded previously
-            if requested_values == matched_values and include:
-                include = True
-            elif requested_values != matched_values:
-                include = False
-            #time
+            #if some parameter failed, then it means it didnt match for this record
+            if requested_values != matched_values:
+                continue
+
+            # Time
+                # api_time_names = {
+                    # "min_logontime": {"db_name": "Login Time", "comparator": self.maximum},
+                    # "max_logontime": {"db_name": "Login Time", "comparator": self.minimum}
+                # }
+            # self.compare(
+                # item[api_time_names["min/max_logontime"]["db_name"]],
+                # parse_time(user_requested_value),
+                # comparator function <--- youre really comparing numbers at ths pint
+            # )
+
+            # function parseTime():
+                #''' convert any time to unix time'''
+                # 238920423904 <---- unix time in seconds
+                # [now,today,yesterday]-[xhym, xh, ym, zs, 786876]
+                    # ^ convert to s      ^ conv to s     ^already in sec
+                #either alrady in unix or parse text
+
+
+
+
                 # Login Time        min_logontime
                 # Login Time        max_logontime
             #/api/v1/pilots/alltypes/?="now-5h4m"                             relative time (use h, m)
             #/api/v1/pilots/alltypes/?max_logontime="38947389473"                           unix time
 
-            if include:
-                #TO--DO: look at fields   #/api/v1/pilots/alltypes/?fields=groundspeed,heading                  only return specific fields
 
-                # curr_data.append({"Txt": item["Vatsim ID"], "user": self.basic_filtration_parameters["cid"]})
-                curr_data.append(item)
+            #TO--DO: look at fields   #/api/v1/pilots/alltypes/?fields=groundspeed,heading                  only return specific fields
+            curr_data.append(item)
 
 
-
-        #about the file
         if "limit" in kwargs["params"]:
             curr_data[0]["Number of Records"] = kwargs["params"]["limit"]
             return curr_data[:kwargs["params"]["limit"] + 1]
