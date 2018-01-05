@@ -224,6 +224,7 @@ class Pilot(VatsimData, object):
         #Generate base URL (stripping the constant portion) - root path from
         #parent class
         static_url = self.root_path + self.verbose_name + "/"
+        #Get base URL
         self.base_url = str(page_url).replace(static_url, "")
 
         #Basic filtration parameters to help filtration function with non-keyword
@@ -237,6 +238,7 @@ class Pilot(VatsimData, object):
         except IndexError:
             instrument_rating = ""
 
+        #Hard coded parameters in URL
         self.basic_filtration_parameters = {
             "rating": instrument_rating,
             "cid": cid
@@ -262,21 +264,36 @@ class Pilot(VatsimData, object):
         #to compare it to user requested parameter. "in" keyword requires a
         #custom within function, because it's a keyword not a first order function\
         try:
-            local_data_value = abs(float(local_data_value))
-            user_requested_value = abs(float(user_requested_value))
+            local_data_value = float(local_data_value)
+            user_requested_value = float(user_requested_value)
         except ValueError:
+            #item must be string so continue
             pass
 
-        if comparator_function(local_data_value, user_requested_value) == user_requested_value:
+        #Check if comparator worked - it is either True or returns
+        return comparator_function(local_data_value, user_requested_value)
+        # if comparator_function(local_data_value, user_requested_value):# in [local_data_value, True]:
+        #     return True
+        # return False
+
+    def minimum(self, local_data_value, user_requested_value):
+        ''' minimum() is a slightly modified function for min() '''
+
+        if min(local_data_value, user_requested_value) == local_data_value:
+            return True
+        return False
+
+    def maximum(self, local_data_value, user_requested_value):
+        ''' maximum() is a slightly modified function for min() '''
+
+        if max(local_data_value, user_requested_value) == local_data_value:
             return True
         return False
 
     def within(self, local_data_value, user_requested_value):
          ''' within() is a make-do first order function for the in keyword '''
 
-         if user_requested_value in local_data_value:
-            return user_requested_value
-         return local_data_value
+         return user_requested_value in local_data_value
 
     def filter(self, **kwargs):
         ''' Filters the data-set based on kwargs (see docs for kwarg help) '''
@@ -289,13 +306,13 @@ class Pilot(VatsimData, object):
         #return self.latest_file["data"][self.verbose_name]
         # #Loop through relevant data (pilots, controllers or voice servers)
         for item in self.latest_data[self.verbose_name]:
+            #Check for rating
+
             #Whether to include the item
             include = False
-
             #Match type (ifr, vfr, alltypes)
             if (not self.basic_filtration_parameters["rating"]) or self.basic_filtration_parameters["rating"] == item["Flight Type"]:
                 include = True
-
             #Match CID
             if item["Vatsim ID"] == self.basic_filtration_parameters["cid"] and include:
                 #found exact CID, so must redefine the list with only this item
@@ -314,17 +331,16 @@ class Pilot(VatsimData, object):
                 "arr_airport": {"db_name": "Planned Destination Airport", "comparator": self.within},
                 "in_route": {"db_name": "Route", "comparator": self.within},
                 "aircraft": {"db_name": "Planned Aircraft", "comparator": self.within},
-
-                "min_latitude": {"db_name": "Latitude", "comparator": max},
-                "max_latitude": {"db_name": "Latitude", "comparator": min},
-                "min_longitude":  {"db_name": "Longitude", "comparator": max},
-                "max_longitude":  {"db_name": "Longitude", "comparator": min},
-                "min_speed": {"db_name": "Ground Speed", "comparator": max},
-                "max_speed": {"db_name": "Ground Speed", "comparator": min},
-                "min_altitude": {"db_name": "Altitude", "comparator": max},
-                "max_altitude": {"db_name": "Altitude", "comparator": min},
-                "min_heading": {"db_name": "Heading", "comparator": max},
-                "max_heading": {"db_name": "Heading", "comparator": min}
+                "min_latitude": {"db_name": "Latitude", "comparator": maximum},
+                "max_latitude": {"db_name": "Latitude", "comparator": minimum},
+                "min_longitude":  {"db_name": "Longitude", "comparator": maximum},
+                "max_longitude":  {"db_name": "Longitude", "comparator": minimum},
+                "min_speed": {"db_name": "Ground Speed", "comparator": maximum},
+                "max_speed": {"db_name": "Ground Speed", "comparator": minimum},
+                "min_altitude": {"db_name": "Altitude", "comparator": maximum},
+                "max_altitude": {"db_name": "Altitude", "comparator": minimum},
+                "min_heading": {"db_name": "Heading", "comparator": maximum},
+                "max_heading": {"db_name": "Heading", "comparator": minimum}
             }
 
             #These must match by the end. If not, then this current line doesnt match
@@ -351,8 +367,6 @@ class Pilot(VatsimData, object):
                         #This matches!! So let's add one to matched values
                         matched_values += 1
 
-                if item["Callsign"] == "AAL1227" and filter_param == "max_longitude ":# or item["Callsign"]'AAL106':
-                    0/0
             #Loop is done, if values match and we hadnt excluded previously
             if requested_values == matched_values and include:
                 include = True
