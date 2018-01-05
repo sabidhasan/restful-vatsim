@@ -68,7 +68,7 @@ class VoiceServers(Resource):
     @use_args(args)
     def get(self, request_arguments):
         #force is the forceUpdate parameter (if provided by user in request arguments)
-        force = request_arguments["forceUpdate"] if "forceUpdate" in request_arguments else False
+        force = request_arguments.get("forceUpdate", False)
         #Create voice server class, passing it forceUpdate
         vatsim_voice_server = VoiceServer(force_update=force)
         #Filter based on parameters
@@ -108,7 +108,7 @@ class Pilots(Resource):
     @use_args(args)
     def get(self, request_arguments, cid=None):
          #force is the forceUpdate parameter (if provided by user in request arguments)
-         force = request_arguments["forceUpdate"] if "forceUpdate" in request_arguments else False
+         force = request_arguments.get("forceUpdate", False)
          #Create pilot class, passing it url, cid and forceUpdate
          vatsim_pilots = Pilot(request.url_rule, cid, force_update=force)
 

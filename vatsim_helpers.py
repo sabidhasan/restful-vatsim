@@ -89,8 +89,7 @@ def jsonify_data(data):
     #Loop through line by line
     for line in data.split("\n"):
 		#Check if line is valid
-        if not check_line_validity(line):
-            continue
+        if not check_line_validity(line): continue
 		#Split by colon (the delimiter)
         vals = line.split(":")
         #This is a voiceserver
@@ -132,14 +131,10 @@ class VatsimData(object):
         #on disk. If none exists, it returns a dummy
         self.latest_file = self.latest_cached_file()
 
-        try:
-    		#Check cache freshness - call download if needed (or if forced update is true)
-            if (self.latest_file["time_updated"] + 120) < int(time.time()) or kwargs["force_update"]:
-    	        #Update the file
-    	        self.update_file()
-        except KeyError:
-            #No force update parameter was provided, but we can assume it's false
-            pass
+		#Check cache freshness - call download if needed (or if forced update is true)
+        if (self.latest_file.get("time_updated", 0) + 120) < int(time.time()) or kwargs.get("force_update"):
+	        #Update the file
+	        self.update_file()
 
     @property
     def latest_data(self):
@@ -199,18 +194,19 @@ class VoiceServer(VatsimData, object):
                     curr_data.append(item)
                 elif "exactMatch" not in kwargs["params"] and kwargs["params"]["name"] in item["Name"]:
                     curr_data.append(item)
-
-            elif "name" not in kwargs["params"]:
+            else:#if "name" not in kwargs["params"]:
                 #No name supplied
                 curr_data.append(item)
-        #Deal with limit. We use +1 because the first object is always info
-        #about the file
-        if "limit" in kwargs["params"]:
-            curr_data[0]["Number of Records"] = kwargs["params"]["limit"]
-            return curr_data[:kwargs["params"]["limit"]+1]
-        else:
-            curr_data[0]["Number of Records"] = len(curr_data) - 1
-            return curr_data
+        #Limit param. We use +1 because the first object is always info about file
+        curr_data[0]["Number of Records"] = kwargs["params"].get("limit", len(curr_data) - 1)
+        end_index = (kwargs["params"]["limit"] + 1) if "limit" in kwargs["params"] else None
+        return curr_data[:end_index]
+        # if "limit" in kwargs["params"]:
+        #     curr_data[0]["Number of Records"] = kwargs["params"]["limit"]
+        #     return curr_data[:kwargs["params"]["limit"]+1]
+        # else:
+        #     curr_data[0]["Number of Records"] = len(curr_data) - 1
+        #     return curr_data
 
 ################################################################################
 
@@ -294,17 +290,15 @@ class Pilot(VatsimData, object):
 
         # #Loop through relevant data (pilots, controllers or voice servers)
         for item in self.latest_data[self.verbose_name]:
-            #Check that if the rating exists, then it must match (if it doesnt exist then its alltypes)
-            if self.basic_filtration_parameters["rating"] and self.basic_filtration_parameters["rating"] != item["Flight Type"]:
-                 continue
-
+            #Rating must match (if it doesnt exist then its alltypes)
+            if self.basic_filtration_parameters["rating"] and self.basic_filtration_parameters["rating"] != item["Flight Type"]: continue
             #If the CID matches
             if item["Vatsim ID"] == self.basic_filtration_parameters["cid"]:
                 curr_data = [curr_data[0]] + [item]
                 break
 
             #Run custom Filters
-            api_names_to_local_data = {
+            api_param_names = {
                 "callsign": {"db_name": "Callsign", "comparator": self.within},
                 "realname": {"db_name": "Real Name", "comparator": self.within},
                 "dep_airport": {"db_name": "Planned Departure Airport", "comparator": self.within},
@@ -326,9 +320,9 @@ class Pilot(VatsimData, object):
             #These must match by the end. If not, then this current line doesnt match
             requested_values, matched_values = (0, 0)
 
-            #Compare all possible filter keywords - must loop thru api_names_to_local_data
+            #Compare all possible filter keywords - must loop thru api_param_names
             #because kwargs[params] has a bunch of other crap (forceUpdate, etc.)
-            for filter_param in api_names_to_local_data:
+            for filter_param in api_param_names:
                 if filter_param in kwargs["params"]:
                     requested_values += 1
                     #If string, then remove quotation marks (if error then its float)
@@ -337,22 +331,21 @@ class Pilot(VatsimData, object):
                     except AttributeError:
                         user_requested_value = kwargs["params"][filter_param]
                     #Name for key in the local database
-                    db_name = api_names_to_local_data[filter_param]["db_name"]
+                    db_name = api_param_names[filter_param]["db_name"]
                     #The comparator function used to compare these
-                    comparator_function = api_names_to_local_data[filter_param]["comparator"]
+                    comparator_function = api_param_names[filter_param]["comparator"]
 
                     if self.compare(item[db_name], user_requested_value, comparator_function):
                         matched_values += 1
-
             #if some parameter failed, then it means it didnt match for this record
-            if requested_values != matched_values:
-                continue
+            if requested_values != matched_values: continue
 
-            # Time
-                # api_time_names = {
-                    # "min_logontime": {"db_name": "Login Time", "comparator": self.maximum},
-                    # "max_logontime": {"db_name": "Login Time", "comparator": self.minimum}
-                # }
+            # Deal with time
+            api_time_names = {
+                "min_logontime": {"db_name": "Login Time", "comparator": self.maximum},
+                "max_logontime": {"db_name": "Login Time", "comparator": self.minimum}
+            }
+            
             # self.compare(
                 # item[api_time_names["min/max_logontime"]["db_name"]],
                 # parse_time(user_requested_value),
@@ -376,6 +369,12 @@ class Pilot(VatsimData, object):
 
 
             #TO--DO: look at fields   #/api/v1/pilots/alltypes/?fields=groundspeed,heading                  only return specific fields
+            #   requested_fields = kwargs['params']['fields'] if "fields" in kwargs["params"] else ""
+            #curr_data.append(filter_fields(item, requested_fields))
+            #def filter_fields(self, full_data, requested_fields):
+            #   if not requested_fields: return full_data
+            #   fields = requested_fields.split(",")
+            #   return filter(lambda x: x in fields, item.keys)
             curr_data.append(item)
 
 
