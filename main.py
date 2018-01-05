@@ -52,6 +52,9 @@ api = Api(app)
 
 
 ################################################################################
+@app.route('/help/')
+def hello():
+    return '<strong>Here is the help</strong>'
 
 class VoiceServers(Resource):
     ''' Route for /api/v1/VoiceServers[?params]. See docs for params usage '''
