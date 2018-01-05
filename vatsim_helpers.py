@@ -262,8 +262,8 @@ class Pilot(VatsimData, object):
         #to compare it to user requested parameter. "in" keyword requires a
         #custom within function, because it's a keyword not a first order function\
         try:
-            local_data_value = float(local_data_value)
-            user_requested_value = float(user_requested_value)
+            local_data_value = abs(float(local_data_value))
+            user_requested_value = abs(float(user_requested_value))
         except ValueError:
             pass
 
@@ -350,8 +350,9 @@ class Pilot(VatsimData, object):
                     if self.compare(item[db_name], user_requested_value, comparator_function):
                         #This matches!! So let's add one to matched values
                         matched_values += 1
-            if item["Callsign"] == 'AAL106':
-                0/0
+
+                if item["Callsign"] == "AAL1227" and filter_param == "max_longitude ":# or item["Callsign"]'AAL106':
+                    0/0
             #Loop is done, if values match and we hadnt excluded previously
             if requested_values == matched_values and include:
                 include = True
