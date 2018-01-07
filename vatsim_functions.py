@@ -240,6 +240,7 @@ def flightlevel_to_feet(flightlevel):
 ################################################################################
 
 def strip_fields(data_row, data_type, user_requested_fields):
+    ''' strip_fields() takes a row of data, and '''
     #No field supplied
     if not user_requested_fields:
         return data_row
@@ -274,9 +275,12 @@ def strip_fields(data_row, data_type, user_requested_fields):
     return culled_row
 
 def add_boiler_plate(data_array, time_updated, boiler_plate_text):
+    ''' add_boiler_plate takes a list of data, and adds boiler plate text (what is
+    returned in the first position of the array) '''
+    #Define boiler plate
     boiler_plate = {"Time Updated (UTC)": int(time_updated),
         "Info": boiler_plate_text,
         "File Age (sec)": int(time.time() - time_updated),
-        "Number of Records": len(data_array) - 1}
+        "Number of Records": len(data_array)}
     data_array.insert(0, boiler_plate)
     return data_array

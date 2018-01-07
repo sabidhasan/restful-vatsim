@@ -79,15 +79,29 @@ class VoiceServer(VatsimData, object):
 
         #Loop through relevant data (pilots, controllers or voice servers)
         for item in self.latest_data[self.verbose_name]:
+            include = False
             #Look at kwargs
             if "name" in kwargs["params"]:
                 if "exactMatch" in kwargs["params"] and kwargs["params"]["name"] == item["Name"]:
-                    curr_data.append(item)
+                    include = True
+                    # curr_data.append(item)
                 elif "exactMatch" not in kwargs["params"] and kwargs["params"]["name"] in item["Name"]:
-                    curr_data.append(item)
+                    include = True
+                    #curr_data.append(item)
             else:
                 #No name supplied
-                curr_data.append(item)
+                include = True
+                # curr_data.append(item)
+            if include:
+                #Filter by view, culling unneeded fields, while keeping VATSIM ID
+                try:
+                    user_requested_fields = filter(None, kwargs["params"]["fields"].split(","))
+                except:
+                    #No field supplied (no "fields" in params)
+                    user_requested_fields = ""
+                #Get requested fields
+                requested_fields = strip_fields(item, self.verbose_name, user_requested_fields)
+                curr_data.append(requested_fields)
 
         curr_data = add_boiler_plate(curr_data, self.latest_file["time_updated"], self.boiler_plate[self.verbose_name])
 
@@ -166,18 +180,11 @@ class Pilot(VatsimData, object):
         # #Loop through relevant data (pilots, controllers or voice servers)
         for item in self.latest_data[self.verbose_name]:
             #Rating must match (if it doesnt exist then its alltypes)
-            if self.basic_filtration_parameters["rating"] and self.basic_filtration_parameters["rating"] != item["Flight Type"]: continue
-            #If the CID matches, then break out of loop
-            if item["Vatsim ID"] == self.basic_filtration_parameters["cid"]:
-                try:
-                    user_requested_fields = filter(None, kwargs["params"]["fields"].split(","))
-                except:
-                    #No field supplied
-                    user_requested_fields = ""
-                #Get requested fields
-                requested_fields = strip_fields(item, self.verbose_name, user_requested_fields)
-                curr_data.append(requested_fields)
-                break
+            if self.basic_filtration_parameters["rating"] and self.basic_filtration_parameters["rating"] != item["Flight Type"]:
+                continue
+            #If CID supplied, then it must match, otherwise continue
+            if self.basic_filtration_parameters["cid"] and self.basic_filtration_parameters["cid"] != item["Vatsim ID"]:
+                continue
 
             #Applied to user inputs before filtration - altitude -> ft; time -> unix epoch time
             sanitation_functions = {
@@ -226,7 +233,7 @@ class Pilot(VatsimData, object):
             #Get requested fields
             requested_fields = strip_fields(item, self.verbose_name, user_requested_fields)
             curr_data.append(requested_fields)
-
+        #If a CID was specified
         #Add boiler plate text
         curr_data = add_boiler_plate(curr_data, self.latest_file["time_updated"], self.boiler_plate[self.verbose_name])
         # Find end index for limit (if it's None, then it splices list until the end)
