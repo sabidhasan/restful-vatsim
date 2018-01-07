@@ -7,15 +7,18 @@ uses
     planes heading a certain direction
     who just signed in and got going quickly (logon time and min speed)
     who is currently saying they are streaming on twitch (remarks)
-
+    fastest planes out there right now
+    
 #VOICE SERVER
     #/api/v1/voice_servers
     #/api/v1/voice_servers?name=London                                only servers with "london" as name
     #/api/v1/voice_servers?name=London&exactMatch=true                match exactly
     #/api/v1/voice_servers?limit=5                                    limit to 5
     #/api/v1/voice_servers?forceUpdate=True                           force a cache file update
-    #/api/v1/voice_servers?fields=<field-names>                       force a cache file update
-    
+    #/api/v1/voice_servers?fields=<field-names>                       limit fields to view
+    #/api/v1/voice_servers?sort=<field-names>,asc                     what to sort on
+
+
 #PILOTS
     #/api/v1/pilots                                                  all pilots
 
