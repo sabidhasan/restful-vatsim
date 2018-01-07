@@ -1,216 +1,8 @@
-'''
-Module contains helper functions for main.py for restful_vatsim
-'''
-import time, random, requests, os, re, datetime
-from functools import reduce
-
-################################################################################
-
-def download():
-    '''download() tries to download the latest vatsim data from a list of
-    randomized servers to distribute server load'''
-    #list of sources to download from
-    vatsim_urls = ["http://info.vroute.net/vatsim-data.txt", "http://data.vattastic.com/vatsim-data.txt", \
-            "http://vatsim.aircharts.org/vatsim-data.txt", "http://vatsim-data.hardern.net/vatsim-data.txt", \
-            "http://wazzup.flightoperationssystem.com/vatsim/vatsim-data.txt"]
-    random_url = random.choice(vatsim_urls)
-    #Download page and save it to disk
-    try:
-        data = requests.get(random_url).text.encode('utf-8')
-        if not(len(data)):
-            raise ValueError
-    except:
-        print "Could not download file"
-        return None
-
-    with open("vatsim_data.txt", 'wb') as f:
-        f.write(data)
-    return data
-
-################################################################################
-
-def check_line_validity(line):
-    ''' check_line_validity() recieves a line in the VATSIM raw data and the
-	function returns true if it's valid and false if it is not '''
-    line = line.split(":")
-    try:
-        #Check for VATSIM comments; these are not valid. First character of first
-        #position in array
-        if line[0][0] == ';':
-            return False
-        #This is an invalid line (non-pilot/ATC/voice server)
-        if len(line) != 6 and len(line) != 42:
-            return False
-    #Line is not accessible at 0th position, so must be empty
-    except IndexError:
-        return False
-
-    #Line must be valid
-    return True
-
-################################################################################
-
-def vatsim_to_unix_time(vt):
-    ''' Converts vatsim time (YYYYMMDDHHMMSS) into Unix time (seconds since epoch) '''
-    times = map(lambda x: int(x), [vt[:4], vt[4:6], vt[6:8], vt[8:10], vt[10:12], vt[12:14]])
-
-    return int((datetime.datetime(*times) - datetime.datetime(1970,1,1)).total_seconds())
-
-def prettify_data(line, **kwargs):
-    ''' prettify_data() recieves a line of data from the vatsim file, already split,
-    and prettifies it to make it ready for jsonifying - discards unneeded data, while
-    keeping the data that the API needs to include. Returns a dictionary. Type =
-    "pilot", "controller" or "voice_servers" '''
-    if kwargs["type"] == "voice_servers":
-        return {"Location": line[1], "Address": line[0], "Name": line[2],
-        "Host Name": line[3], "Clients Allowed": line[4]}
-    elif kwargs["type"] == "controllers":
-        return {"Callsign": line[0], "Vatsim ID": int(line[1]), \
-        "Real Name": line[2], "Frequency": line[4], "Latitude": line[5], \
-        "Longitude": line[6], "Visible Range": line[19], "ATIS": \
-        line[35], "Login Time": vatsim_to_unix_time(line[37])}
-    elif kwargs["type"] == "pilots":
-        return {"Callsign": line[0], "Vatsim ID": int(line[1]), "Real Name": line[2], \
-        "Latitude": line[5], "Longitude": line[6], "Login Time": vatsim_to_unix_time(line[37]), \
-        "Altitude": line[7], "Ground Speed": line[8], "Heading": line[38], \
-        "Route": line[30], "Remarks": line[29], "Planned Aircraft": line[9], \
-        "Planned Departure Airport": line[11], "Planned Altitude": flightlevel_to_feet(line[12]), \
-        "Planned Destination Airport": line[13], "Flight Type": line[21], "Planned Departure Time": \
-        line[22]}
-
-################################################################################
-
-def jsonify_data(data):
-    ''' jsonify_data() makes recieved raw VATSIM.txt data usable by trimming the
-    fat, parsing for errors, and making data easily searchable '''
-    #Linted data that will be returned
-    parsed_data = {
-        "pilots": [],
-        "voice_servers": [],
-        "controllers": []
-    }
-    #Loop through line by line
-    for line in data.split("\n"):
-		#Check if line is valid
-        if not check_line_validity(line): continue
-		#Split by colon (the delimiter)
-        vals = line.split(":")
-        #This is a voiceserver
-        if len(vals) == 6:
-            # Construct dictionary of this line + append to parsed data
-            curr_data = prettify_data(vals, type="voice_servers")
-            parsed_data["voice_servers"].append(curr_data)
-        #ATC found
-        elif vals[3] == "ATC":
-            #Construct dictionary of this line, and append to parsed data
-            curr_data = prettify_data(vals, type="controllers")
-            parsed_data["controllers"].append(curr_data)
-        #pilot found
-        elif vals[3] == "PILOT":
-            #Construct dictionary of this line
-            curr_data = prettify_data(vals, type="pilots")
-            parsed_data["pilots"].append(curr_data)
-    return parsed_data
-
-################################################################################
-
-def parseTime(raw_time):
-    ''' parseTime() function takes a raw_time, which is either a Unix timestamp,
-    or human readable time [now,today,yesterday]-[xhym, xh, ym, zs, 786876], and
-    returns a unix timestamp from it'''
-    #Trying to get UNIX time (secs since 1970/1/1) to make time_codes dictionary. For:
-        # #1) this moment
-        # #2) today's calendar date, when it started at midnight today
-        # #3) yesterday's calendar date, at midnight yesteday
-    #Define datetime objects for UTC_now, zero_time (1970) and exactly 24 h ago
-    zero_time = datetime.datetime(1970, 1, 1)
-    utc_time = datetime.datetime.utcnow()
-    exact_yesterday = (utc_time - datetime.timedelta(1))
-
-    #Unix epoch time is the difference in seconds from utctime to zero time
-    now_in_unix = int((utc_time - zero_time).total_seconds())
-
-    #Create a NEW datetime object with **only** yesterday's date, thereby ensuring
-    #it starts at midnight - (no time information)
-    yesterday_time = datetime.datetime(exact_yesterday.year, exact_yesterday.month, exact_yesterday.day)
-    #Unix epoch time is the difference in seconds from yestarday-midnight to zero time
-    yesterday_in_unix = int((yesterday_time - zero_time).total_seconds())
-
-    #Create a NEW datetime object with **only** today's date, thereby ensuring
-    #it starts at midnight - (no time information)
-    today_time = datetime.datetime(utc_time.year, utc_time.month, utc_time.day)
-    #Unix epoch time is the difference in seconds from today-midnight to zero time
-    today_in_unix = int((today_time - zero_time).total_seconds())
-
-    time_codes = {"now": now_in_unix, "today": today_in_unix, "yesterday": yesterday_in_unix}
-
-    #Start parsing the time
-    fixed_time = raw_time.replace(" ", "").split("-")
-
-    #This is the "start" time (now, yesteday, today, etc.)
-    start_time = time_codes.get(fixed_time[0], 0)
-
-    if len(fixed_time) == 1: return int(start_time)
-
-    #Regex for second time; time_objects is a tuple containing each group from regex
-    end_duration = 0
-    time_objects = re.search(r"^(\d*[d])?(\d*[h])?(\d*[m])?(\d*[s]?)?$", fixed_time[1])
-    #was a valid search supplied?
-    if not time_objects: return int(start_time)
-    #Filter out the empties (regex returns None if that particular group was not found)
-    time_objects = filter(None, list(time_objects.groups()))
-
-    #Add up total duration (accumulator + value of that time duration) val = "15h"
-    time_durations = {"d": 86400, "h": 3600, "m": 60, "s": 1}
-    adder = lambda acc, val: acc + (time_durations.get(val[-1], 0) * int(val[:-1]))
-
-    try:
-        #reduce(function, iterable, initial value for acc)
-        end_duration = reduce(adder, time_objects, 0)
-    except:
-        #Unknown error
-        print "Unknown error occured in parsing time"
-        end_duration = 0
-
-    return int(start_time - end_duration)
-
-################################################################################
-
-def compare(local_data_value, user_requested_value, comparator_function):
-    ''' Called as comparator function - if user requested value is substring
-    of the local_data_value then there is a match '''
-    #Comparison looks at local line and applies a comparator function
-    #to compare it to user requested parameter. "in" keyword requires a
-    #custom within function, because it's a keyword not a first order function\
-    try:
-        local_data_value = float(local_data_value)
-        user_requested_value = float(user_requested_value)
-    except ValueError:
-        #item must be string so continue
-        pass
-
-    #Check if comparator worked - it is either True or returns
-    return comparator_function(local_data_value, user_requested_value)
-
-################################################################################
-
-def minimum(local_data_value, user_requested_value):
-    ''' minimum() is a slightly modified function for min() '''
-    return min(local_data_value, user_requested_value) == local_data_value
-
-################################################################################
-
-def maximum(local_data_value, user_requested_value):
-    ''' maximum() is a slightly modified function for min() '''
-    return max(local_data_value, user_requested_value) == local_data_value
-
-################################################################################
-
-def within(local_data_value, user_requested_value):
-     ''' within() is a make-do first order function for the in keyword '''
-     return user_requested_value in local_data_value
-
-################################################################################
+'''Module contains classes for main.py used by restful_vatsim'''
+#import standard libraries
+import os, time
+#import non-class functions
+from vatsim_functions import *
 
 class VatsimData(object):
     ''' Generic base class for voiceServer, pilots and controllers '''
@@ -297,7 +89,7 @@ class VoiceServer(VatsimData, object):
                 #No name supplied
                 curr_data.append(item)
         #Limit param. We use +1 because the first object is always info about file
-        curr_data[0]["Number of Records"] = kwargs["params"].get("limit", len(curr_data) - 1)
+        curr_data[0]["Number of Records"] = len(curr_data) - 1#kwargs["params"].get("limit", len(curr_data) - 1)
         end_index = (kwargs["params"]["limit"] + 1) if "limit" in kwargs["params"] else None
         return curr_data[:end_index]
 
@@ -344,47 +136,43 @@ class Pilot(VatsimData, object):
         ]
 
         #Run custom Filters
-        self.possible_fields = {
-            "callsign": {"db_name": "Callsign", "comparator": within},
-            "realname": {"db_name": "Real Name", "comparator": within},
-            "dep_airport": {"db_name": "Planned Departure Airport", "comparator": within},
-            "arr_airport": {"db_name": "Planned Destination Airport", "comparator": within},
-            "in_route": {"db_name": "Route", "comparator": within},
-            "aircraft": {"db_name": "Planned Aircraft", "comparator": within},
-            "min_latitude": {"db_name": "Latitude", "comparator": maximum},
-            "max_latitude": {"db_name": "Latitude", "comparator": minimum},
-            "min_longitude":  {"db_name": "Longitude", "comparator": maximum},
-            "max_longitude":  {"db_name": "Longitude", "comparator": minimum},
-            "min_speed": {"db_name": "Ground Speed", "comparator": maximum},
-            "max_speed": {"db_name": "Ground Speed", "comparator": minimum},
-            "min_altitude": {"db_name": "Altitude", "comparator": maximum},
-            "max_altitude": {"db_name": "Altitude", "comparator": minimum},
-            "min_heading": {"db_name": "Heading", "comparator": maximum},
-            "max_heading": {"db_name": "Heading", "comparator": minimum},
-            "min_logontime": {"db_name": "Login Time", "comparator": maximum},
-            "max_logontime": {"db_name": "Login Time", "comparator": minimum}
+        self.possible_parameters = {
+            "callsign": {"clean_name": "Callsign", "comparator": within},
+            "realname": {"clean_name": "Real Name", "comparator": within},
+            "dep_airport": {"clean_name": "Planned Departure Airport", "comparator": within},
+            "arr_airport": {"clean_name": "Planned Destination Airport", "comparator": within},
+            "in_route": {"clean_name": "Route", "comparator": within},
+            "aircraft": {"clean_name": "Planned Aircraft", "comparator": within},
+            "min_latitude": {"clean_name": "Latitude", "comparator": maximum},
+            "max_latitude": {"clean_name": "Latitude", "comparator": minimum},
+            "min_longitude":  {"clean_name": "Longitude", "comparator": maximum},
+            "max_longitude":  {"clean_name": "Longitude", "comparator": minimum},
+            "min_speed": {"clean_name": "Ground Speed", "comparator": maximum},
+            "max_speed": {"clean_name": "Ground Speed", "comparator": minimum},
+            "min_altitude": {"clean_name": "Altitude", "comparator": maximum},
+            "max_altitude": {"clean_name": "Altitude", "comparator": minimum},
+            "min_heading": {"clean_name": "Heading", "comparator": maximum},
+            "max_heading": {"clean_name": "Heading", "comparator": minimum},
+            "min_logontime": {"clean_name": "Login Time", "comparator": maximum},
+            "max_logontime": {"clean_name": "Login Time", "comparator": minimum}
         }
 
 
     def filter(self, **kwargs):
         ''' Filters the data-set based on kwargs (see docs for kwarg help) '''
-
-        curr_data = [{
-            "Time Updated (UTC)": int(self.latest_file["time_updated"]),
-            "Info": self.boiler_plate[self.verbose_name]
-        }]
+        curr_data = [{  "Time Updated (UTC)": int(self.latest_file["time_updated"]),
+                        "Info": self.boiler_plate[self.verbose_name]}]
 
         # #Loop through relevant data (pilots, controllers or voice servers)
         for item in self.latest_data[self.verbose_name]:
             #Rating must match (if it doesnt exist then its alltypes)
             if self.basic_filtration_parameters["rating"] and self.basic_filtration_parameters["rating"] != item["Flight Type"]: continue
-            #If the CID matches
+            #If the CID matches, then break out of loop
             if item["Vatsim ID"] == self.basic_filtration_parameters["cid"]:
                 curr_data = [curr_data[0]] + [item]
                 break
 
-            #These functions are applied to some user inputs before filtration
-            #Altitudes should be parsed for FL; times should be parsed to get unix time
+            #Applied to user inputs before filtration - altitude -> ft; time -> unix epoch time
             sanitation_functions = {
                 "min_altitude": flightlevel_to_feet,
                 "max_altitude": flightlevel_to_feet,
@@ -395,12 +183,12 @@ class Pilot(VatsimData, object):
             #These must match by the end. If not, then this current line doesnt match
             requested_values, matched_values = (0, 0)
 
-            #Compare all possible filter keywords - must loop thru self.possible_fields
+            #Compare all possible filter keywords - must loop thru self.possible_parameters
             #because kwargs[params] has a bunch of other crap (forceUpdate, etc.)
-            for filter_param in self.possible_fields:
+            for filter_param in self.possible_parameters:
                 if filter_param in kwargs["params"]:
                     requested_values += 1
-                    #If string, then remove quotation marks (if error then its float)
+                    #If string, then remove quotation marks (if AttributeError then its a float)
                     try:
                         user_requested_value = kwargs["params"][filter_param].replace("\"", "").replace("'", "")
                     except AttributeError:
@@ -411,61 +199,33 @@ class Pilot(VatsimData, object):
                         desanitizer = sanitation_functions[filter_param]
                         user_requested_value = desanitizer(user_requested_value)
 
-                    # if "logontime" in filter_param:
-                    #     print 0/0
-
                     #Name for key in the local database
-                    db_name = self.possible_fields[filter_param]["db_name"]
+                    clean_name = self.possible_parameters[filter_param]["clean_name"]
                     #The comparator function used to compare these
-                    comparator_function = self.possible_fields[filter_param]["comparator"]
+                    comparator_function = self.possible_parameters[filter_param]["comparator"]
 
-                    if compare(item[db_name], user_requested_value, comparator_function):
+                    if compare(item[clean_name], user_requested_value, comparator_function):
                         matched_values += 1
 
             #if some parameter failed, then it means it didnt match for this record
             if requested_values != matched_values: continue
 
-            #Cull unneeded fields
-            #Keep vatsim id
-            #requested_fields = strip_fields(item, )
+            #Filter by view, culling unneeded fields, while keeping VATSIM ID
+            user_requested_fields = kwargs['params'].get("fields", "").split(",")
+            requested_fields = strip_fields(item, self.verbose_name, user_requested_fields)
+
 
             #TO--DO: look at fields   #/api/v1/pilots/alltypes/?fields=groundspeed,heading                  only return specific fields
-            #   requested_fields = kwargs['params']['fields'] if "fields" in kwargs["params"] else ""
+            #
             #curr_data.append(filter_fields(item, requested_fields))
             #def filter_fields(self, full_data, requested_fields):
             #   if not requested_fields: return full_data
             #   fields = requested_fields.split(",")
             #   return filter(lambda x: x in fields, item.keys)
-            curr_data.append(item)
+            curr_data.append(requested_fields)
 
 
-        if "limit" in kwargs["params"]:
-            curr_data[0]["Number of Records"] = kwargs["params"]["limit"]
-            return curr_data[:kwargs["params"]["limit"] + 1]
-        else:
-            curr_data[0]["Number of Records"] = len(curr_data) - 1
-            return curr_data
-
-
-def flightlevel_to_feet(flightlevel):
-    '''The flightlevel_to_feet() function recieves something like 'FL360' or 1500
-    and returns 36000 or 1500 '''
-
-    #No altitude specified, so assume it is 0
-    if not(flightlevel): return 0
-
-    flightlevel = str(flightlevel).lower()
-    if "fl" in flightlevel or "f" in flightlevel:
-        #Sometimes, pilots put "VFR" for altitude, so this code will execute, but
-        #Altitude is still not valid, so value error will occur
-        try:
-            return int(flightlevel.replace("fl", "").replace("f", "")) * 100
-        except ValueError:
-            return 0
-    else:
-        #It could be that a number was specified (so no flight level but thousands
-        #of feet). If so, try to return it
-        try:
-            return int(flightlevel)
-        except ValueError:
-            return 0
+        #Limit param. We use +1 because the first object is always info about file
+        curr_data[0]["Number of Records"] = len(curr_data) - 1
+        end_index = (kwargs["params"]["limit"] + 1) if "limit" in kwargs["params"] else None
+        return curr_data[:end_index]
