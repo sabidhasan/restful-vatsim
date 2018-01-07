@@ -108,6 +108,80 @@ def jsonify_data(data):
 
 ################################################################################
 
+def parseTime(raw_time):
+    ''' raw_time is either Unix time, or human readable time
+    [now,today,yesterday]-[xhym, xh, ym, zs, 786876]'''
+    #Try to parse the time
+            #TO--DO: fix the times here
+    time_codes = {"now": time.time(), "today": 0, "yesterday": 0}
+
+    fixed_time = raw_time.replace(" ", "").split("-")
+
+    #This is the "start" time (now, yesteday, today, etc.)
+    start_time = time_codes.get(fixed_time[0], 0)
+
+    if len(fixed_time) == 1: return int(start_time)
+
+    #Regex for second time; time_objects is a tuple containing each group from regex
+    end_duration = 0
+    time_objects = re.search(r"^(\d*[d])?(\d*[h])?(\d*[m])?(\d*[s]?)?$", fixed_time[1])
+    #was a valid search supplied?
+    if not time_objects: return int(start_time)
+    #Filter out the empties (regex returns None if that particular group was not found)
+    time_objects = filter(None, list(time_objects.groups()))
+
+    #Add up total duration (accumulator + value of that time duration) val = "15h"
+    time_durations = {"d": 86400, "h": 3600, "m": 60, "s": 1}
+    adder = lambda acc, val: acc + (time_durations.get(val[-1], 0) * int(val[:-1]))
+
+    try:
+        #reduce(function, iterable, initial value for acc)
+        end_duration = reduce(adder, time_objects, 0)
+    except:
+        #Unknown error
+        print "Unknown error occured in parsing time"
+        end_duration = 0
+
+    return int(start_time - end_duration)
+
+################################################################################
+
+def compare(local_data_value, user_requested_value, comparator_function):
+    ''' Called as comparator function - if user requested value is substring
+    of the local_data_value then there is a match '''
+    #Comparison looks at local line and applies a comparator function
+    #to compare it to user requested parameter. "in" keyword requires a
+    #custom within function, because it's a keyword not a first order function\
+    try:
+        local_data_value = float(local_data_value)
+        user_requested_value = float(user_requested_value)
+    except ValueError:
+        #item must be string so continue
+        pass
+
+    #Check if comparator worked - it is either True or returns
+    return comparator_function(local_data_value, user_requested_value)
+
+################################################################################
+
+def minimum(local_data_value, user_requested_value):
+    ''' minimum() is a slightly modified function for min() '''
+    return min(local_data_value, user_requested_value) == local_data_value
+
+################################################################################
+
+def maximum(local_data_value, user_requested_value):
+    ''' maximum() is a slightly modified function for min() '''
+    return max(local_data_value, user_requested_value) == local_data_value
+
+################################################################################
+
+def within(local_data_value, user_requested_value):
+     ''' within() is a make-do first order function for the in keyword '''
+     return user_requested_value in local_data_value
+
+################################################################################
+
 class VatsimData(object):
     ''' Generic base class for voiceServer, pilots and controllers '''
     #Boiler plate text that will get added to returned objects
@@ -196,12 +270,6 @@ class VoiceServer(VatsimData, object):
         curr_data[0]["Number of Records"] = kwargs["params"].get("limit", len(curr_data) - 1)
         end_index = (kwargs["params"]["limit"] + 1) if "limit" in kwargs["params"] else None
         return curr_data[:end_index]
-        # if "limit" in kwargs["params"]:
-        #     curr_data[0]["Number of Records"] = kwargs["params"]["limit"]
-        #     return curr_data[:kwargs["params"]["limit"]+1]
-        # else:
-        #     curr_data[0]["Number of Records"] = len(curr_data) - 1
-        #     return curr_data
 
 ################################################################################
 
@@ -244,70 +312,6 @@ class Pilot(VatsimData, object):
               self.root_path + self.verbose_name + '/IFR',
               self.root_path + self.verbose_name + '/IFR/<int:cid>'
         ]
-
-    def compare(self, local_data_value, user_requested_value, comparator_function):
-        ''' Called as comparator function - if user requested value is substring
-        of the local_data_value then there is a match '''
-        #Comparison looks at local line and applies a comparator function
-        #to compare it to user requested parameter. "in" keyword requires a
-        #custom within function, because it's a keyword not a first order function\
-        try:
-            local_data_value = float(local_data_value)
-            user_requested_value = float(user_requested_value)
-        except ValueError:
-            #item must be string so continue
-            pass
-
-        #Check if comparator worked - it is either True or returns
-        return comparator_function(local_data_value, user_requested_value)
-
-    def minimum(self, local_data_value, user_requested_value):
-        ''' minimum() is a slightly modified function for min() '''
-        return min(local_data_value, user_requested_value) == local_data_value
-
-    def maximum(self, local_data_value, user_requested_value):
-        ''' maximum() is a slightly modified function for min() '''
-        return max(local_data_value, user_requested_value) == local_data_value
-
-    def within(self, local_data_value, user_requested_value):
-         ''' within() is a make-do first order function for the in keyword '''
-         return user_requested_value in local_data_value
-
-    def parseTime(raw_time):
-        ''' raw_time is either Unix time, or human readable time
-        [now,today,yesterday]-[xhym, xh, ym, zs, 786876]'''
-        #Try to parse the time
-                #TO--DO: fix the times here
-        time_codes = {"now": time.time(), "today": 0, "yesterday": 0}
-
-        fixed_time = raw_time.replace(" ", "").split("-")
-
-        #This is the "start" time (now, yesteday, today, etc.)
-        start_time = time_codes.get(fixed_time[0], 0)
-
-        if len(fixed_time) == 1: return int(start_time)
-
-        #Regex for second time; time_objects is a tuple containing each group from regex
-        end_duration = 0
-        time_objects = re.search(r"^(\d*[d])?(\d*[h])?(\d*[m])?(\d*[s]?)?$", fixed_time[1])
-        #was a valid search supplied?
-        if not time_objects: return int(start_time)
-        #Filter out the empties (regex returns None if that particular group was not found)
-        time_objects = filter(None, list(time_objects.groups()))
-
-        #Add up total duration (accumulator + value of that time duration) val = "15h"
-        time_durations = {"d": 86400, "h": 3600, "m": 60, "s": 1}
-        adder = lambda acc, val: acc + (time_durations.get(val[-1], 0) * int(val[:-1]))
-
-        try:
-            #reduce(function, iterable, initial value for acc)
-            end_duration = reduce(adder, time_objects, 0)
-        except:
-            #Unknown error
-            print "Unknown error occured in parsing time"
-            end_duration = 0
-
-        return int(start_time - end_duration)
 
     def filter(self, **kwargs):
         ''' Filters the data-set based on kwargs (see docs for kwarg help) '''
