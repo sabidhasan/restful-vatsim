@@ -36,7 +36,7 @@ from flask_restful import Resource, Api
 from webargs import fields, validate
 from webargs.flaskparser import use_args, parser, abort
 #Custom methods
-from vatsim_helpers import *
+from vatsim_classes import *
 
 #create flask app
 app = Flask(__name__)
@@ -100,8 +100,8 @@ class Pilots(Resource):
         "dep_airport": fields.Str(required=False),
         "arr_airport": fields.Str(required=False),
         "in_route": fields.Str(required=False),
-        "min_logontime": fields.Int(required=False),
-        "max_logontime": fields.Int(required=False),
+        "min_logontime": fields.Str(required=False),
+        "max_logontime": fields.Str(required=False),
         "aircraft": fields.Str(required=False),
         "limit": fields.Int(required=False, validate=(lambda x: 1 <= x <= 50)),
         #forceUpdate forces a download of a new file
