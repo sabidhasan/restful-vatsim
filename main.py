@@ -104,7 +104,6 @@ class Pilots(Resource):
         "max_logontime": fields.Str(required=False),
         "aircraft": fields.Str(required=False),
         "limit": fields.Int(required=False, validate=(lambda x: 1 <= x <= 50)),
-        #forceUpdate forces a download of a new file
         "forceUpdate": fields.Bool(required=False)
     }
 
@@ -116,26 +115,6 @@ class Pilots(Resource):
          vatsim_pilots = Pilot(request.url_rule, cid, force_update=force)
 
          return vatsim_pilots.filter(params=request_arguments)
-
-# No 2nd one?        make it "alltypes"
-# 2nd one Num        make it "alltypes" and append the Number
-# 2nd one alltypes   check for third one (number), and then filters
-# 2nd one VFR        filter by VFR then check for third one (number), and then filters
-# 2nd one IFR        filter by IFR then check for third one (number), and then filters
-#
-#                                 /pilots/IFR/?-----
-#                                 /pilots/IFR/50000/?----
-#
-#                                 /pilots/VFR/?----
-#                                 /pilots/VFR/50000/?----
-#
-#                                 /pilots/alltypes/?----
-#                                 /pilots/alltypes/50000/?----
-#
-#                                 /pilots/?----
-#                                 /pilots/50000/?----
-
-
 
 ################################################################################
 
