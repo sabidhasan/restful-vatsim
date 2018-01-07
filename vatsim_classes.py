@@ -100,8 +100,8 @@ class VoiceServer(VatsimData, object):
                     #No field supplied (no "fields" in params)
                     user_requested_fields = ""
                 #Get requested fields
-                requested_fields = strip_fields(item, self.verbose_name, user_requested_fields)
-                curr_data.append(requested_fields)
+                required_fields = strip_fields(item, self.verbose_name, user_requested_fields)
+                curr_data.append(required_fields)
 
         curr_data = add_boiler_plate(curr_data, self.latest_file["time_updated"], self.boiler_plate[self.verbose_name])
 
@@ -119,7 +119,7 @@ class Pilot(VatsimData, object):
         #Generate base URL (stripping the constant portion) - root path from
         #parent class
         static_url = self.root_path + self.verbose_name + "/"
-        #Get base URL
+        #Get base URL by stripping the static URL
         self.base_url = str(page_url).replace(static_url, "")
 
         #Basic filtration parameters to help filtration function with non-keyword
@@ -224,16 +224,15 @@ class Pilot(VatsimData, object):
             #if some parameter failed, then it means it didnt match for this record
             if requested_values != matched_values: continue
 
-            #Filter by view, culling unneeded fields, while keeping VATSIM ID
+            #Filter by fields, culling unneeded fields. If no field was specified, then make it""
             try:
                 user_requested_fields = filter(None, kwargs["params"]["fields"].split(","))
             except:
-                #No field supplied
                 user_requested_fields = ""
             #Get requested fields
-            requested_fields = strip_fields(item, self.verbose_name, user_requested_fields)
-            curr_data.append(requested_fields)
-        #If a CID was specified
+            required_fields = strip_fields(item, self.verbose_name, user_requested_fields)
+            curr_data.append(required_fields)
+
         #Add boiler plate text
         curr_data = add_boiler_plate(curr_data, self.latest_file["time_updated"], self.boiler_plate[self.verbose_name])
         # Find end index for limit (if it's None, then it splices list until the end)
