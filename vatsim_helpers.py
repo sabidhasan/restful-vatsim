@@ -1,14 +1,14 @@
 '''
 Module contains helper functions for main.py for restful_vatsim
 '''
-import time, random, requests, os
+import time, random, requests, os, re
+from functools import reduce
 
 ################################################################################
 
 def download():
     '''download() tries to download the latest vatsim data from a list of
     randomized servers to distribute server load'''
-
     #list of sources to download from
     vatsim_urls = ["http://info.vroute.net/vatsim-data.txt", "http://data.vattastic.com/vatsim-data.txt", \
             "http://vatsim.aircharts.org/vatsim-data.txt", "http://vatsim-data.hardern.net/vatsim-data.txt", \
@@ -32,7 +32,6 @@ def download():
 def check_line_validity(line):
     ''' check_line_validity() recieves a line in the VATSIM raw data and the
 	function returns true if it's valid and false if it is not '''
-
     line = line.split(":")
     try:
         #Check for VATSIM comments; these are not valid. First character of first
@@ -56,7 +55,6 @@ def prettify_data(line, **kwargs):
     and prettifies it to make it ready for jsonifying - discards unneeded data, while
     keeping the data that the API needs to include. Returns a dictionary. Type =
     "pilot", "controller" or "voice_servers" '''
-
     if kwargs["type"] == "voice_servers":
         return {"Location": line[1], "Address": line[0], "Name": line[2],
         "Host Name": line[3], "Clients Allowed": line[4]}
@@ -79,7 +77,6 @@ def prettify_data(line, **kwargs):
 def jsonify_data(data):
     ''' jsonify_data() makes recieved raw VATSIM.txt data usable by trimming the
     fat, parsing for errors, and making data easily searchable '''
-
     #Linted data that will be returned
     parsed_data = {
         "pilots": [],
@@ -113,7 +110,6 @@ def jsonify_data(data):
 
 class VatsimData(object):
     ''' Generic base class for voiceServer, pilots and controllers '''
-
     #Boiler plate text that will get added to returned objects
     boiler_plate = {
         "voice_servers": "VOICE SERVERS contains a list of running voice servers that clients can use",
@@ -173,7 +169,6 @@ class VatsimData(object):
 
 class VoiceServer(VatsimData, object):
     ''' Use this class for accessing Voice Server data '''
-
     def __init__(self, **kwargs):
         super(VoiceServer, self).__init__(**kwargs)
         self.verbose_name = "voice_servers"
@@ -212,7 +207,6 @@ class VoiceServer(VatsimData, object):
 
 class Pilot(VatsimData, object):
     ''' Use this class for accessing pilot data '''
-
     def __init__(self, page_url="", cid=None, **kwargs):
         super(Pilot, self).__init__(**kwargs)
         #For accessing boiler_plate text, etc.
@@ -254,7 +248,6 @@ class Pilot(VatsimData, object):
     def compare(self, local_data_value, user_requested_value, comparator_function):
         ''' Called as comparator function - if user requested value is substring
         of the local_data_value then there is a match '''
-
         #Comparison looks at local line and applies a comparator function
         #to compare it to user requested parameter. "in" keyword requires a
         #custom within function, because it's a keyword not a first order function\
@@ -279,6 +272,42 @@ class Pilot(VatsimData, object):
     def within(self, local_data_value, user_requested_value):
          ''' within() is a make-do first order function for the in keyword '''
          return user_requested_value in local_data_value
+
+    def parseTime(raw_time):
+        ''' raw_time is either Unix time, or human readable time
+        [now,today,yesterday]-[xhym, xh, ym, zs, 786876]'''
+        #Try to parse the time
+                #TO--DO: fix the times here
+        time_codes = {"now": time.time(), "today": 0, "yesterday": 0}
+
+        fixed_time = raw_time.replace(" ", "").split("-")
+
+        #This is the "start" time (now, yesteday, today, etc.)
+        start_time = time_codes.get(fixed_time[0], 0)
+
+        if len(fixed_time) == 1: return int(start_time)
+
+        #Regex for second time; time_objects is a tuple containing each group from regex
+        end_duration = 0
+        time_objects = re.search(r"^(\d*[d])?(\d*[h])?(\d*[m])?(\d*[s]?)?$", fixed_time[1])
+        #was a valid search supplied?
+        if not time_objects: return int(start_time)
+        #Filter out the empties (regex returns None if that particular group was not found)
+        time_objects = filter(None, list(time_objects.groups()))
+
+        #Add up total duration (accumulator + value of that time duration) val = "15h"
+        time_durations = {"d": 86400, "h": 3600, "m": 60, "s": 1}
+        adder = lambda acc, val: acc + (time_durations.get(val[-1], 0) * int(val[:-1]))
+
+        try:
+            #reduce(function, iterable, initial value for acc)
+            end_duration = reduce(adder, time_objects, 0)
+        except:
+            #Unknown error
+            print "Unknown error occured in parsing time"
+            end_duration = 0
+
+        return int(start_time - end_duration)
 
     def filter(self, **kwargs):
         ''' Filters the data-set based on kwargs (see docs for kwarg help) '''
@@ -345,25 +374,13 @@ class Pilot(VatsimData, object):
                 "min_logontime": {"db_name": "Login Time", "comparator": self.maximum},
                 "max_logontime": {"db_name": "Login Time", "comparator": self.minimum}
             }
-            
+
             # self.compare(
                 # item[api_time_names["min/max_logontime"]["db_name"]],
                 # parse_time(user_requested_value),
                 # comparator function <--- youre really comparing numbers at ths pint
             # )
 
-            # function parseTime():
-                #''' convert any time to unix time'''
-                # 238920423904 <---- unix time in seconds
-                # [now,today,yesterday]-[xhym, xh, ym, zs, 786876]
-                    # ^ convert to s      ^ conv to s     ^already in sec
-                #either alrady in unix or parse text
-
-
-
-
-                # Login Time        min_logontime
-                # Login Time        max_logontime
             #/api/v1/pilots/alltypes/?="now-5h4m"                             relative time (use h, m)
             #/api/v1/pilots/alltypes/?max_logontime="38947389473"                           unix time
 
