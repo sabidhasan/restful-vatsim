@@ -1,31 +1,4 @@
 ''' Docs '''
-#CONTROLLER (client type is CONTROLLER)
-    #/api/v1/controllers/                                               all atc
-
-    #api/v1/controllers/centers                                         type center
-    #api/v1/controllers/towers                                          type tower
-    #api/v1/controllers/alltypes                                            type all of the above
-
-    #api/v1/controllers/alltypes/50000                                       specific CID
-
-
-
-
-    #/api/v1/controllers/alltypes/?fields=callsign,realname                       only return specific fields
-
-    #/api/v1/controllers/alltypes/?callsign="EDDM"                                identify where callsign contains ...
-    #/api/v1/controllers/alltypes/?realname="Edward"                              identify where name contains ...
-
-    #/api/v1/controllers/alltypes/?min_latitude=50&maxlatitude=100                   identify by latitude
-    #/api/v1/controllers/alltypes/?min_longitude=50&maxlongitude=100                 identify by latitude
-
-    #/api/v1/controllers/alltypes/?frequency=124.95                                 identify by freq.
-
-    #/api/v1/controllers/alltypes/?atis="military"                              ATIS text content
-
-    #/api/v1/controllers/alltypes/?logontime<="now-5h4m"                             relative time (use h, m)
-    #/api/v1/controllers/alltypes/?logontime>"38947389473"                           unix time
-
 #Module imports
 from flask import Flask, request
 from flask_restful import Resource, Api
@@ -76,9 +49,42 @@ class VoiceServers(Resource):
         return vatsim_voice_server.filter(params=request_arguments)
 
 ################################################################################
+class Controllers(Resource):
+    ''' Route for /api/v1/controllers/[?params]. See docs for params usage '''
+
+    args = {
+        "callsign": fields.Str(required=False),
+        "real_name": fields.Str(required=False),
+        "frequency": fields.Str(required=False),
+        "min_latitude": fields.Float(required=False),
+        "max_latitude": fields.Float(required=False),
+        "min_longitude": fields.Float(required=False),
+        "max_longitude": fields.Float(required=False),
+        "airport": fields.Str(required=False),
+        "in_atis": fields.Str(required=False),
+        "min_visrange": fields.Int(required=False),
+        "max_visrange": fields.Int(required=False),
+        "min_logontime": fields.Str(required=False),
+        "max_logontime": fields.Str(required=False),
+        "limit": fields.Int(required=False, validate=(lambda x: 1 <= x <= 50)),
+        "forceUpdate": fields.Bool(required=False),
+        "sort": fields.Str(required=False),
+        "fields": fields.Str(required=False)
+    }
+
+    @use_args(args)
+    def get(self, request_arguments, cid=None):
+         #force is the forceUpdate parameter (if provided by user in request arguments)
+         force = request_arguments.get("forceUpdate", False)
+         #Create pilot class, passing it url, cid and forceUpdate
+         vatsim_controllers = Controller(request.url_rule, cid, force_update=force)
+
+         return vatsim_controllers.filter(params=request_arguments)
+
+################################################################################
 
 class Pilots(Resource):
-    ''' Route for /api/v1/Pilots/[?params]. See docs for params usage '''
+    ''' Route for /api/v1/pilots/[?params]. See docs for params usage '''
 
     #Define valid arguments
     args = {
@@ -89,8 +95,9 @@ class Pilots(Resource):
         "max_latitude": fields.Float(required=False),
         "min_longitude": fields.Float(required=False),
         "max_longitude": fields.Float(required=False),
-        "min_altitude": fields.Int(required=False),
-        "max_altitude": fields.Int(required=False),
+        #String because you can type "FL350"
+        "min_altitude": fields.Str(required=False),
+        "max_altitude": fields.Str(required=False),
         "min_speed": fields.Int(required=False),
         "max_speed": fields.Int(required=False),
         "min_heading": fields.Int(required=False),
@@ -120,8 +127,7 @@ class Pilots(Resource):
 #add resources for relavant API paths. Get path list from respective classes
 api.add_resource(VoiceServers, *VoiceServer().paths)
 api.add_resource(Pilots, *Pilot().paths)
-
-
+api.add_resource(Controllers, *Controller().paths)
 
 ################################################################################
 
