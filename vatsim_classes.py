@@ -4,6 +4,13 @@ import os, time
 #import non-class functions
 from vatsim_functions import *
 
+#Class structure. Starred classes should be created directly
+# VatsimData
+# |
+#  -->   *VoiceServer            HumanUser
+#                                   |
+#                                    -->   *Pilot        *Controller
+
 class VatsimData(object):
     ''' Generic base class for voiceServer, pilots and controllers '''
     #Boiler plate text that will get added to returned objects
@@ -72,6 +79,9 @@ class VoiceServer(VatsimData, object):
         self.verbose_name = "voice_servers"
         self.paths = [self.root_path + self.verbose_name]
 
+        self.strip_fields_dict = {"location": "Location", "address": "Address", "name": "Name", \
+            "host_name": "Host Name", "clients_allowed": "Clients Allowed"}
+
     def filter(self, **kwargs):
         ''' Filters the data-set based on kwargs (see docs for kwarg help) '''
         #Start variable
@@ -97,7 +107,7 @@ class VoiceServer(VatsimData, object):
                     #No field supplied (no "fields" in params)
                     user_requested_fields = ""
                 #Get requested fields
-                required_fields = strip_fields(item, self.verbose_name, user_requested_fields)
+                required_fields = strip_fields(item, self.verbose_name, self.strip_fields_dict, user_requested_fields)
                 curr_data.append(required_fields)
 
         curr_data = add_boiler_plate(curr_data, self.latest_file["time_updated"], self.boiler_plate[self.verbose_name])
@@ -107,20 +117,16 @@ class VoiceServer(VatsimData, object):
 
 ################################################################################
 
-class Controller(VatsimData, object):
-    ''' Use this class for accessing controller data '''
+class HumanUser(VatsimData, object):
+    ''' Base class for Pilots and Controllers, because a lot of code in the __init__
+    method is repeated for those two classes '''
 
-    
+    def __init__(self, verbose_name, page_url="", cid=None, **kwargs):
+        super(HumanUser, self).__init__(**kwargs)
 
-class Pilot(VatsimData, object):
-    ''' Use this class for accessing pilot data '''
-    def __init__(self, page_url="", cid=None, **kwargs):
-        super(Pilot, self).__init__(**kwargs)
-        #For accessing boiler_plate text, etc.
-        self.verbose_name = "pilots"
         #Generate base URL (stripping the constant portion) - root path from
         #parent class
-        static_url = self.root_path + self.verbose_name + "/"
+        static_url = self.root_path + verbose_name + "/"
         #Get base URL by stripping the static URL
         self.base_url = str(page_url).replace(static_url, "")
 
@@ -140,6 +146,23 @@ class Pilot(VatsimData, object):
             "rating": instrument_rating,
             "cid": cid
         }
+
+class Controller(VatsimData, object):
+     pass
+#     ''' Use this class for accessing controller data '''
+#
+#             self.strip_fields_dict = {"callsign": "Callsign", "vatsim_id": "Vatsim ID", "realname": "Real Name", \
+        #         "frequency": "Frequency", "latitude": "Latitude", "longitude": "Longitude", \
+        #         "visible_range": "Visible Range", "atis": "ATIS", "login_time": "Login Time"}
+
+
+class Pilot(HumanUser, object):
+    ''' Use this class for accessing pilot data '''
+    def __init__(self, page_url="", cid=None, **kwargs):
+        #For accessing boiler_plate text, etc.
+        self.verbose_name = "pilots"
+
+        super(Pilot, self).__init__(self.verbose_name, page_url, cid, **kwargs)
 
         #Paths for routing accessible for flask restful
         self.paths = [
@@ -174,6 +197,13 @@ class Pilot(VatsimData, object):
             "min_logontime": {"clean_name": "Login Time", "comparator": maximum},
             "max_logontime": {"clean_name": "Login Time", "comparator": minimum}
         }
+
+        self.strip_fields_dict = {"callsign": "Callsign", "vatsim_id": "Vatsim ID", "realname": "Real Name", \
+            "latitude": "Latitude", "longitude": "Longitude", "login_time": "Login Time", \
+            "altitude": "Altitude", "ground_speed": "Ground Speed", "heading": "Heading", \
+            "route": "Route", "remarks": "Remarks", "planned_aircraft": "Planned Aircraft", \
+            "airport_destination": "Planned Destination Airport", "airport_origin": "Planned Departure Airport", \
+            "planned_altitude": "Planned Altitude", "flight_type": "Flight Type", "time": "Planned Departure Time"}
 
     def filter(self, **kwargs):
         ''' Filters the data-set based on kwargs (see docs for kwarg help) '''
@@ -232,7 +262,7 @@ class Pilot(VatsimData, object):
             except:
                 user_requested_fields = ""
             #Get requested fields
-            required_fields = strip_fields(item, self.verbose_name, user_requested_fields)
+            required_fields = strip_fields(item, self.verbose_name, self.strip_fields_dict, user_requested_fields)
             curr_data.append(required_fields)
 
         #Add boiler plate text

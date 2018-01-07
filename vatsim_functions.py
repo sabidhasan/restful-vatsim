@@ -25,7 +25,6 @@ def download():
         f.write(data)
     return data
 
-
 ################################################################################
 
 def check_line_validity(line):
@@ -57,20 +56,20 @@ def vatsim_to_unix_time(vt):
 
 ################################################################################
 
-def prettify_data(line, **kwargs):
-    ''' prettify_data() recieves a line of data from the vatsim file, already split,
+def prettify_data(line, verbose_name):
+    ''' prettify_data() recieves a line of data from the vatsim file, already split on ":",
     and prettifies it to make it ready for jsonifying - discards unneeded data, while
     keeping the data that the API needs to include. Returns a dictionary. Type =
     "pilot", "controller" or "voice_servers" '''
-    if kwargs["type"] == "voice_servers":
+    if verbose_name == "voice_servers":
         return {"Location": line[1], "Address": line[0], "Name": line[2],
         "Host Name": line[3], "Clients Allowed": line[4]}
-    elif kwargs["type"] == "controllers":
+    elif verbose_name == "controllers":
         return {"Callsign": line[0], "Vatsim ID": int(line[1]), \
         "Real Name": line[2], "Frequency": line[4], "Latitude": line[5], \
         "Longitude": line[6], "Visible Range": line[19], "ATIS": \
         line[35], "Login Time": vatsim_to_unix_time(line[37])}
-    elif kwargs["type"] == "pilots":
+    elif verbose_name == "pilots":
         return {"Callsign": line[0], "Vatsim ID": int(line[1]), "Real Name": line[2], \
         "Latitude": line[5], "Longitude": line[6], "Login Time": vatsim_to_unix_time(line[37]), \
         "Altitude": line[7], "Ground Speed": line[8], "Heading": line[38], \
@@ -99,17 +98,17 @@ def jsonify_data(data):
         #This is a voiceserver
         if len(vals) == 6:
             # Construct dictionary of this line + append to parsed data
-            curr_data = prettify_data(vals, type="voice_servers")
+            curr_data = prettify_data(vals, "voice_servers")
             parsed_data["voice_servers"].append(curr_data)
         #ATC found
         elif vals[3] == "ATC":
             #Construct dictionary of this line, and append to parsed data
-            curr_data = prettify_data(vals, type="controllers")
+            curr_data = prettify_data(vals, "controllers")
             parsed_data["controllers"].append(curr_data)
         #pilot found
         elif vals[3] == "PILOT":
             #Construct dictionary of this line
-            curr_data = prettify_data(vals, type="pilots")
+            curr_data = prettify_data(vals, "pilots")
             parsed_data["pilots"].append(curr_data)
     return parsed_data
 
@@ -238,40 +237,29 @@ def flightlevel_to_feet(flightlevel):
 
 ################################################################################
 
-def strip_fields(data_row, data_type, user_requested_fields):
-    ''' strip_fields() takes a row of data, and '''
+def strip_fields(data_row, verbose_name, name_dictionary, user_requested_fields):
+    ''' strip_fields() takes a row of data, verbose_name, dictionary of short-names
+    to long-names (DB names) and a list of user requested fields (each a string)'''
     #No field supplied
     if not user_requested_fields:
         return data_row
 
-    names = {
-        "voice_servers": {"location": "Location", "address": "Address", "name": "Name", \
-        "host_name": "Host Name", "clients_allowed": "Clients Allowed"},
-        "controllers": {"callsign": "Callsign", "vatsim_id": "Vatsim ID", "realname": "Real Name", \
-        "frequency": "Frequency", "latitude": "Latitude", "longitude": "Longitude", \
-        "visible_range": "Visible Range", "atis": "ATIS", "login_time": "Login Time"},
-        "pilots": {"callsign": "Callsign", "vatsim_id": "Vatsim ID", "realname": "Real Name", \
-        "latitude": "Latitude", "longitude": "Longitude", "login_time": "Login Time", \
-        "altitude": "Altitude", "ground_speed": "Ground Speed", "heading": "Heading", \
-        "route": "Route", "remarks": "Remarks", "planned_aircraft": "Planned Aircraft", \
-        "airport_destination": "Planned Destination Airport", "airport_origin": "Planned Departure Airport", \
-        "planned_altitude": "Planned Altitude", "flight_type": "Flight Type", "time": "Planned Departure Time"}
-    }
-
-    if data_type == "voice_servers":
+    if verbose_name == "voice_servers":
         culled_row = {}
     else:
         culled_row = {"Vatsim ID": data_row["Vatsim ID"]}
 
     for internal_name in user_requested_fields:
-        if not internal_name in names[data_type]:
+        if not internal_name in name_dictionary:
             continue
-        clean_name = names[data_type].get(internal_name)
+        clean_name = name_dictionary.get(internal_name)
         culled_row[clean_name] = data_row[clean_name]
 
     if len(culled_row) == 0:
         return data_row
     return culled_row
+
+################################################################################
 
 def add_boiler_plate(data_array, time_updated, boiler_plate_text):
     ''' add_boiler_plate takes a list of data, and adds boiler plate text (what is
