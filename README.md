@@ -15,3 +15,5 @@ Used by VATSee on the backend.
 - logging
 - writing main functions
 - documentation
+- help page (non API pages should redirect to friendly help page)
+- field validation (things like sort should look for valid input using regex?)
