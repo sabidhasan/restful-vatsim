@@ -61,8 +61,9 @@ class VoiceServers(Resource):
         "name": fields.Str(required=False),
         "exactMatch": fields.Bool(required=False),
         "limit": fields.Int(required=False, validate=(lambda x: 1 <= x <= 50)),
-        #forceUpdate forces a download of a new file
-        "forceUpdate": fields.Bool(required=False)
+        "forceUpdate": fields.Bool(required=False),
+        "fields": fields.Str(required=False),
+        "sort": fields.Str(required=False)
     }
 
     @use_args(args)
@@ -101,7 +102,8 @@ class Pilots(Resource):
         "max_logontime": fields.Str(required=False),
         "aircraft": fields.Str(required=False),
         "limit": fields.Int(required=False, validate=(lambda x: 1 <= x <= 50)),
-        "forceUpdate": fields.Bool(required=False)
+        "forceUpdate": fields.Bool(required=False),
+        "sort": fields.Str(required=False)
     }
 
     @use_args(args)

@@ -109,9 +109,11 @@ class VoiceServer(VatsimData, object):
                 #Get requested fields
                 required_fields = strip_fields(item, self.verbose_name, self.strip_fields_dict, user_requested_fields)
                 curr_data.append(required_fields)
-
+        #Sort if needed
+        curr_data = sort_on_field(curr_data, kwargs["params"].get("sort"), self.strip_fields_dict)
+        #Add boiler plate
         curr_data = add_boiler_plate(curr_data, self.latest_file["time_updated"], self.boiler_plate[self.verbose_name])
-
+        #Cut by index
         end_index = (kwargs["params"]["limit"] + 1) if "limit" in kwargs["params"] else None
         return curr_data[:end_index]
 
@@ -151,7 +153,7 @@ class Controller(VatsimData, object):
      pass
 #     ''' Use this class for accessing controller data '''
 #
-#             self.strip_fields_dict = {"callsign": "Callsign", "vatsim_id": "Vatsim ID", "realname": "Real Name", \
+#             self.strip_fields_dict = {"callsign": "Callsign", "vatsim_id": "Vatsim ID", "real_name": "Real Name", \
         #         "frequency": "Frequency", "latitude": "Latitude", "longitude": "Longitude", \
         #         "visible_range": "Visible Range", "atis": "ATIS", "login_time": "Login Time"}
 
@@ -178,7 +180,7 @@ class Pilot(HumanUser, object):
         #Run custom Filters
         self.possible_parameters = {
             "callsign": {"clean_name": "Callsign", "comparator": within},
-            "realname": {"clean_name": "Real Name", "comparator": within},
+            "real_name": {"clean_name": "Real Name", "comparator": within},
             "dep_airport": {"clean_name": "Planned Departure Airport", "comparator": within},
             "arr_airport": {"clean_name": "Planned Destination Airport", "comparator": within},
             "in_route": {"clean_name": "Route", "comparator": within},
@@ -198,7 +200,7 @@ class Pilot(HumanUser, object):
             "max_logontime": {"clean_name": "Login Time", "comparator": minimum}
         }
 
-        self.strip_fields_dict = {"callsign": "Callsign", "vatsim_id": "Vatsim ID", "realname": "Real Name", \
+        self.strip_fields_dict = {"callsign": "Callsign", "vatsim_id": "Vatsim ID", "real_name": "Real Name", \
             "latitude": "Latitude", "longitude": "Longitude", "login_time": "Login Time", \
             "altitude": "Altitude", "ground_speed": "Ground Speed", "heading": "Heading", \
             "route": "Route", "remarks": "Remarks", "planned_aircraft": "Planned Aircraft", \
@@ -264,7 +266,15 @@ class Pilot(HumanUser, object):
             #Get requested fields
             required_fields = strip_fields(item, self.verbose_name, self.strip_fields_dict, user_requested_fields)
             curr_data.append(required_fields)
+            #
+            # #Sort if needed, TO--DO: eror is if you are not seeing a field and sorting on it, it doesnt work
+            # try:
+            #     curr_data.sort(key=lambda x: x[self.strip_fields_dict[kwargs["params"]["sort"]]])
+            # except KeyError:
+            #     pass
 
+        #Sort if needed
+        curr_data = sort_on_field(curr_data, kwargs["params"].get("sort"), self.strip_fields_dict)
         #Add boiler plate text
         curr_data = add_boiler_plate(curr_data, self.latest_file["time_updated"], self.boiler_plate[self.verbose_name])
         # Find end index for limit (if it's None, then it splices list until the end)

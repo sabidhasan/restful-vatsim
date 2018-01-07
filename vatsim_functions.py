@@ -72,7 +72,7 @@ def prettify_data(line, verbose_name):
     elif verbose_name == "pilots":
         return {"Callsign": line[0], "Vatsim ID": int(line[1]), "Real Name": line[2], \
         "Latitude": line[5], "Longitude": line[6], "Login Time": vatsim_to_unix_time(line[37]), \
-        "Altitude": line[7], "Ground Speed": line[8], "Heading": line[38], \
+        "Altitude": int(line[7]), "Ground Speed": int(line[8]), "Heading": int(line[38]), \
         "Route": line[30], "Remarks": line[29], "Planned Aircraft": line[9], \
         "Planned Departure Airport": line[11], "Planned Altitude": flightlevel_to_feet(line[12]), \
         "Planned Destination Airport": line[13], "Flight Type": line[21], "Planned Departure Time": \
@@ -270,4 +270,24 @@ def add_boiler_plate(data_array, time_updated, boiler_plate_text):
         "File Age (sec)": int(time.time() - time_updated),
         "Number of Records": len(data_array)}
     data_array.insert(0, boiler_plate)
+    return data_array
+
+def sort_on_field(data_array, user_sort_text, strip_fields_dict):
+    ''' sort_on_field() sorts a full data array based on user_sort_text (?sort=heading,asc)
+    and the long-name of the field (long name is what's included in the data_array)'''
+    #Sort if needed, TO--DO: eror is if you are not seeing a field and sorting on it, it doesnt work
+    if user_sort_text is not None:
+        sort_field = user_sort_text.split(",")[0]
+
+        sort_orders = {"asc": False, "dec": True}
+        try:
+            sort_order = user_sort_text.split(",")[1].lower()
+        except IndexError:
+            sort_order = ""
+        sort_order = sort_orders.get(sort_order, False)
+
+        try:
+            data_array.sort(key=lambda x, i=strip_fields_dict[sort_field]: x[i], reverse=sort_order)
+        except KeyError:
+            pass
     return data_array
