@@ -151,11 +151,43 @@ class HumanUser(VatsimData, object):
 
 class Controller(VatsimData, object):
      pass
-#     ''' Use this class for accessing controller data '''
-#
-#             self.strip_fields_dict = {"callsign": "Callsign", "vatsim_id": "Vatsim ID", "real_name": "Real Name", \
-        #         "frequency": "Frequency", "latitude": "Latitude", "longitude": "Longitude", \
-        #         "visible_range": "Visible Range", "atis": "ATIS", "login_time": "Login Time"}
+     ''' Use this class for accessing controller data '''
+     def __init__(self, page_url="", cid=None, **kwargs):
+         self.verbose_name = "controllers"
+         super(Pilot, self).__init__(self.verbose_name, page_url, cid, **kwargs)
+         self.paths = [
+               self.root_path + self.verbose_name,
+               self.root_path + self.verbose_name + '/alltypes',
+               self.root_path + self.verbose_name + '/alltypes/<int:cid>',
+               self.root_path + self.verbose_name + '/centers',
+               self.root_path + self.verbose_name + '/centers/<int:cid>',
+               self.root_path + self.verbose_name + '/towers',
+               self.root_path + self.verbose_name + '/towers/<int:cid>'
+         ]
+
+        self.possible_parameters = {
+            "callsign": {"clean_name": "Callsign", "comparator": within},
+            "real_name": {"clean_name": "Real Name", "comparator": within},
+            "frequency": {"clean_name": "Real Name", "comparator": within},
+            "min_latitude": {"clean_name": "Latitude", "comparator": maximum},
+            "max_latitude": {"clean_name": "Latitude", "comparator": minimum},
+            "min_longitude":  {"clean_name": "Longitude", "comparator": maximum},
+            "max_longitude":  {"clean_name": "Longitude", "comparator": minimum},
+            "min_visrange":  {"clean_name": "Visible Range", "comparator": maximum},
+            "max_visrange":  {"clean_name": "Visible Range", "comparator": minimum},
+            "in_atis": {"clean_name": "ATIS", "comparator": within},
+            "airport": {"clean_name": "Airport", "comparator": within},
+            "min_logontime": {"clean_name": "Login Time", "comparator": maximum},
+            "max_logontime": {"clean_name": "Login Time", "comparator": minimum}
+        }
+
+        self.strip_fields_dict = {"callsign": "Callsign", "airport": "Airport", \
+            "vatsim_id": "Vatsim ID", "real_name": "Real Name", "frequency": "Frequency", \
+            "latitude": "Latitude", "longitude": "Longitude", "visible_range": "Visible Range", \
+            "atis": "ATIS", "login_time": "Login Time"}
+
+        def filter(self, **kwargs):
+            ''' filter() filters the data-set based on kwargs (see docs for kwarg help) '''
 
 
 class Pilot(HumanUser, object):
