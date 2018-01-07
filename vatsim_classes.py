@@ -36,6 +36,7 @@ class VatsimData(object):
         #The latest file must not be defined yet
         except KeyError:
             return None
+
     def latest_cached_file(self):
         ''' latest_cached_file() returns the latest file available on disk
         or returns a dummy blank file with time_updated of 0. '''
@@ -49,6 +50,7 @@ class VatsimData(object):
                 data = jsonify_data(f.read())
                 self.latest_file = {'time_updated': os.path.getmtime(self.file_path), 'data': data}
         return self.latest_file
+
     def update_file(self):
         '''update_file() fetches new data. It then returns freshest data'''
         #Needs updating
@@ -72,11 +74,9 @@ class VoiceServer(VatsimData, object):
 
     def filter(self, **kwargs):
         ''' Filters the data-set based on kwargs (see docs for kwarg help) '''
+        #Start variable
+        curr_data = []
 
-        curr_data = [{
-            "Time Updated (UTC)": int(self.latest_file["time_updated"]),
-            "Info": self.boiler_plate[self.verbose_name]
-        }]
         #Loop through relevant data (pilots, controllers or voice servers)
         for item in self.latest_data[self.verbose_name]:
             #Look at kwargs
@@ -85,11 +85,12 @@ class VoiceServer(VatsimData, object):
                     curr_data.append(item)
                 elif "exactMatch" not in kwargs["params"] and kwargs["params"]["name"] in item["Name"]:
                     curr_data.append(item)
-            else:#if "name" not in kwargs["params"]:
+            else:
                 #No name supplied
                 curr_data.append(item)
-        #Limit param. We use +1 because the first object is always info about file
-        curr_data[0]["Number of Records"] = len(curr_data) - 1#kwargs["params"].get("limit", len(curr_data) - 1)
+
+        curr_data = add_boiler_plate(curr_data, self.latest_file["time_updated"], self.boiler_plate[self.verbose_name])
+
         end_index = (kwargs["params"]["limit"] + 1) if "limit" in kwargs["params"] else None
         return curr_data[:end_index]
 
@@ -142,6 +143,7 @@ class Pilot(VatsimData, object):
             "dep_airport": {"clean_name": "Planned Departure Airport", "comparator": within},
             "arr_airport": {"clean_name": "Planned Destination Airport", "comparator": within},
             "in_route": {"clean_name": "Route", "comparator": within},
+            "in_remarks": {"clean_name": "Remarks", "comparator": within},
             "aircraft": {"clean_name": "Planned Aircraft", "comparator": within},
             "min_latitude": {"clean_name": "Latitude", "comparator": maximum},
             "max_latitude": {"clean_name": "Latitude", "comparator": minimum},
@@ -157,11 +159,9 @@ class Pilot(VatsimData, object):
             "max_logontime": {"clean_name": "Login Time", "comparator": minimum}
         }
 
-
     def filter(self, **kwargs):
         ''' Filters the data-set based on kwargs (see docs for kwarg help) '''
-        curr_data = [{  "Time Updated (UTC)": int(self.latest_file["time_updated"]),
-                        "Info": self.boiler_plate[self.verbose_name]}]
+        curr_data = []
 
         # #Loop through relevant data (pilots, controllers or voice servers)
         for item in self.latest_data[self.verbose_name]:
@@ -169,7 +169,14 @@ class Pilot(VatsimData, object):
             if self.basic_filtration_parameters["rating"] and self.basic_filtration_parameters["rating"] != item["Flight Type"]: continue
             #If the CID matches, then break out of loop
             if item["Vatsim ID"] == self.basic_filtration_parameters["cid"]:
-                curr_data = [curr_data[0]] + [item]
+                try:
+                    user_requested_fields = filter(None, kwargs["params"]["fields"].split(","))
+                except:
+                    #No field supplied
+                    user_requested_fields = ""
+                #Get requested fields
+                requested_fields = strip_fields(item, self.verbose_name, user_requested_fields)
+                curr_data.append(requested_fields)
                 break
 
             #Applied to user inputs before filtration - altitude -> ft; time -> unix epoch time
@@ -211,21 +218,17 @@ class Pilot(VatsimData, object):
             if requested_values != matched_values: continue
 
             #Filter by view, culling unneeded fields, while keeping VATSIM ID
-            user_requested_fields = kwargs['params'].get("fields", "").split(",")
+            try:
+                user_requested_fields = filter(None, kwargs["params"]["fields"].split(","))
+            except:
+                #No field supplied
+                user_requested_fields = ""
+            #Get requested fields
             requested_fields = strip_fields(item, self.verbose_name, user_requested_fields)
-
-
-            #TO--DO: look at fields   #/api/v1/pilots/alltypes/?fields=groundspeed,heading                  only return specific fields
-            #
-            #curr_data.append(filter_fields(item, requested_fields))
-            #def filter_fields(self, full_data, requested_fields):
-            #   if not requested_fields: return full_data
-            #   fields = requested_fields.split(",")
-            #   return filter(lambda x: x in fields, item.keys)
             curr_data.append(requested_fields)
 
-
-        #Limit param. We use +1 because the first object is always info about file
-        curr_data[0]["Number of Records"] = len(curr_data) - 1
+        #Add boiler plate text
+        curr_data = add_boiler_plate(curr_data, self.latest_file["time_updated"], self.boiler_plate[self.verbose_name])
+        # Find end index for limit (if it's None, then it splices list until the end)
         end_index = (kwargs["params"]["limit"] + 1) if "limit" in kwargs["params"] else None
         return curr_data[:end_index]

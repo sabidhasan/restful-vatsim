@@ -240,8 +240,9 @@ def flightlevel_to_feet(flightlevel):
 ################################################################################
 
 def strip_fields(data_row, data_type, user_requested_fields):
-    print 0/0
-    if not user_requested_fields: return data_row
+    #No field supplied
+    if not user_requested_fields:
+        return data_row
 
     names = {
         "voice_servers": {"location": "Location", "address": "Address", "name": "Name", \
@@ -271,3 +272,11 @@ def strip_fields(data_row, data_type, user_requested_fields):
     if len(culled_row) == 0:
         return data_row
     return culled_row
+
+def add_boiler_plate(data_array, time_updated, boiler_plate_text):
+    boiler_plate = {"Time Updated (UTC)": int(time_updated),
+        "Info": boiler_plate_text,
+        "File Age (sec)": int(time.time() - time_updated),
+        "Number of Records": len(data_array) - 1}
+    data_array.insert(0, boiler_plate)
+    return data_array
