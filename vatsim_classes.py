@@ -84,14 +84,11 @@ class VoiceServer(VatsimData, object):
             if "name" in kwargs["params"]:
                 if "exactMatch" in kwargs["params"] and kwargs["params"]["name"] == item["Name"]:
                     include = True
-                    # curr_data.append(item)
                 elif "exactMatch" not in kwargs["params"] and kwargs["params"]["name"] in item["Name"]:
                     include = True
-                    #curr_data.append(item)
             else:
                 #No name supplied
                 include = True
-                # curr_data.append(item)
             if include:
                 #Filter by view, culling unneeded fields, while keeping VATSIM ID
                 try:
@@ -109,6 +106,11 @@ class VoiceServer(VatsimData, object):
         return curr_data[:end_index]
 
 ################################################################################
+
+class Controller(VatsimData, object):
+    ''' Use this class for accessing controller data '''
+
+    
 
 class Pilot(VatsimData, object):
     ''' Use this class for accessing pilot data '''

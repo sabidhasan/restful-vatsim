@@ -1,8 +1,5 @@
 ''' Docs '''
-#PILOTS (client type is pilot)
-
-
-#CENTERS (client type is center)
+#CONTROLLER (client type is CONTROLLER)
     #/api/v1/controllers/                                               all atc
 
     #api/v1/controllers/centers                                         type center
@@ -127,7 +124,7 @@ api.add_resource(Pilots, *Pilot().paths)
 ################################################################################
 
 @parser.error_handler
-def handle_request_parsing_error(err):#
+def handle_request_parsing_error(err):
     '''webargs error handler that uses Flask-RESTful's abort function to return
     a JSON error response to the client.'''
     errors = {

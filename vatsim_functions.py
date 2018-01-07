@@ -2,7 +2,6 @@
 import random, requests, re, datetime, time
 from functools import reduce
 
-
 ################################################################################
 
 def download():
