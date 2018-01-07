@@ -56,6 +56,22 @@ def vatsim_to_unix_time(vt):
 
 ################################################################################
 
+def vatsim_to_int(data):
+    ''' vatsim_to_int() takes raw data from the text file and tries to return
+    it as an integer '''
+    try:
+        return int(data)
+    except ValueError:
+        return 0
+
+################################################################################
+
+def airport_from_callsign(callsign):
+    ''' Takes "CYYZ_ATIS" or "CHI_W_GND" and returns "CYYZ", "CHI", etc. '''
+    return callsign[0:4].replace("_", "")
+
+################################################################################
+
 def prettify_data(line, verbose_name):
     ''' prettify_data() recieves a line of data from the vatsim file, already split on ":",
     and prettifies it to make it ready for jsonifying - discards unneeded data, while
@@ -65,14 +81,14 @@ def prettify_data(line, verbose_name):
         return {"Location": line[1], "Address": line[0], "Name": line[2],
         "Host Name": line[3], "Clients Allowed": line[4]}
     elif verbose_name == "controllers":
-        return {"Callsign": line[0], "Vatsim ID": int(line[1]), \
+        return {"Callsign": line[0], "Airport": airport_from_callsign(line[0]), "Vatsim ID": vatsim_to_int(line[1]), \
         "Real Name": line[2], "Frequency": line[4], "Latitude": line[5], \
         "Longitude": line[6], "Visible Range": line[19], "ATIS": \
         line[35], "Login Time": vatsim_to_unix_time(line[37])}
     elif verbose_name == "pilots":
-        return {"Callsign": line[0], "Vatsim ID": int(line[1]), "Real Name": line[2], \
+        return {"Callsign": line[0], "Vatsim ID": vatsim_to_int(line[1]), "Real Name": line[2], \
         "Latitude": line[5], "Longitude": line[6], "Login Time": vatsim_to_unix_time(line[37]), \
-        "Altitude": int(line[7]), "Ground Speed": int(line[8]), "Heading": int(line[38]), \
+        "Altitude": vatsim_to_int(line[7]), "Ground Speed": vatsim_to_int(line[8]), "Heading": vatsim_to_int(line[38]), \
         "Route": line[30], "Remarks": line[29], "Planned Aircraft": line[9], \
         "Planned Departure Airport": line[11], "Planned Altitude": flightlevel_to_feet(line[12]), \
         "Planned Destination Airport": line[13], "Flight Type": line[21], "Planned Departure Time": \
@@ -271,6 +287,8 @@ def add_boiler_plate(data_array, time_updated, boiler_plate_text):
         "Number of Records": len(data_array)}
     data_array.insert(0, boiler_plate)
     return data_array
+
+################################################################################
 
 def sort_on_field(data_array, user_sort_text, strip_fields_dict):
     ''' sort_on_field() sorts a full data array based on user_sort_text (?sort=heading,asc)
