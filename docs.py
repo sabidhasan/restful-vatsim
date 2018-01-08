@@ -8,7 +8,7 @@ uses
     who just signed in and got going quickly (logon time and min speed)
     who is currently saying they are streaming on twitch (remarks)
     fastest planes out there right now
-    
+
 #VOICE SERVER
     #/api/v1/voice_servers
     #/api/v1/voice_servers?name=London                                only servers with "london" as name
@@ -49,3 +49,29 @@ uses
     #/api/v1/pilots/alltypes/?min_logontime="now-5h4m"                             relative time (use h, m)
             # [now,today,yesterday]-[wd, xh, ym, zs, 786876]
     #/api/v1/pilots/alltypes/?max_logontime="38947389473"                           unix time
+
+#CONTROLLER (client type is CONTROLLER)
+    #/api/v1/controllers/                                               all atc
+
+    #api/v1/controllers/centers                                         type center
+    #api/v1/controllers/towers                                          type tower
+    #api/v1/controllers/alltypes                                            type all of the above
+
+    #api/v1/controllers/alltypes/50000                                       specific CID
+
+
+
+    #/api/v1/controllers/alltypes/?fields=callsign,realname                       only return specific fields
+
+    #/api/v1/controllers/alltypes/?callsign="EDDM"                                identify where callsign contains ...
+    #/api/v1/controllers/alltypes/?realname="Edward"                              identify where name contains ...
+
+    #/api/v1/controllers/alltypes/?min_latitude=50&maxlatitude=100                   identify by latitude
+    #/api/v1/controllers/alltypes/?min_longitude=50&maxlongitude=100                 identify by latitude
+
+    #/api/v1/controllers/alltypes/?frequency=124.95                                 identify by freq.
+
+    #/api/v1/controllers/alltypes/?atis="military"                              ATIS text content
+
+    #/api/v1/controllers/alltypes/?logontime<="now-5h4m"                             relative time (use h, m)
+    #/api/v1/controllers/alltypes/?logontime>"38947389473"                           unix time

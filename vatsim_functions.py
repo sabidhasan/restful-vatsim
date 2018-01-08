@@ -277,14 +277,16 @@ def strip_fields(data_row, verbose_name, name_dictionary, user_requested_fields)
 
 ################################################################################
 
-def add_boiler_plate(data_array, time_updated, boiler_plate_text):
-    ''' add_boiler_plate takes a list of data, and adds boiler plate text (what is
-    returned in the first position of the array) '''
+def add_boiler_plate(data_array, time_updated, boiler_plate_text, end_index):
+    ''' add_boiler_plate() takes a list of data, time_updated integer, boiler_plate_text
+    and end_index (which is used for the limit parameter), adds boiler plate text
+    (what is then returned in the first position of the array) '''
     #Define boiler plate
-    boiler_plate = {"Time Updated (UTC)": int(time_updated),
+    num_rec = len(data_array) if end_index is None else end_index
+    boiler_plate = {"Time Updated (UTC)": humanize_time(int(time_updated)),
         "Info": boiler_plate_text,
         "File Age (sec)": int(time.time() - time_updated),
-        "Number of Records": len(data_array)}
+        "Number of Records": num_rec}
     data_array.insert(0, boiler_plate)
     return data_array
 
@@ -318,9 +320,15 @@ def category_check(requested_category, current_callsign):
     '''
     #convert callsign to lowercase
     current_callsign = current_callsign.lower()
-    
+
     if requested_category == "c" and not "ctr" in current_callsign:
         return True
     elif requested_category == "t" and ("ctr" in curr_callsign or "sup" in curr_callsign):
         return True
     return False
+
+################################################################################
+
+def humanize_time(epoch_time):
+    ''' humanize_time() takes epoch UNIX time and returns human readable time '''
+    return time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(epoch_time))

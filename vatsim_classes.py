@@ -109,12 +109,13 @@ class VoiceServer(VatsimData, object):
                 #Get requested fields
                 required_fields = strip_fields(item, self.verbose_name, self.strip_fields_dict, user_requested_fields)
                 curr_data.append(required_fields)
+        end_index = kwargs["params"].get("limit") #+ 1) if "limit" in kwargs["params"] else None
         #Sort if needed
         curr_data = sort_on_field(curr_data, kwargs["params"].get("sort"), self.strip_fields_dict)
         #Add boiler plate
-        curr_data = add_boiler_plate(curr_data, self.latest_file["time_updated"], self.boiler_plate[self.verbose_name])
+        curr_data = add_boiler_plate(curr_data, self.latest_file["time_updated"], self.boiler_plate[self.verbose_name], end_index)
         #Cut by index
-        end_index = (kwargs["params"]["limit"] + 1) if "limit" in kwargs["params"] else None
+        if end_index is not None: end_index += 1
         return curr_data[:end_index]
 
 ################################################################################
@@ -190,14 +191,8 @@ class Controller(HumanUser, object):
          ''' filter() filters the data-set based on kwargs (see docs for kwarg help) '''
          curr_data = []
          for item in self.latest_data[self.verbose_name]:
-             if self.basic_filtration_parameters["category"]:
-                 #category is supplied
-                 cat = self.basic_filtration_parameters["category"]
-                 curr_callsign = item["Callsign"].lower()
-                 if cat == "c" and not "ctr" in curr_callsign:
-                     continue
-                 elif cat == "t" and ("ctr" in curr_callsign or "sup" in curr_callsign):
-                     continue
+             if self.basic_filtration_parameters["category"] and category_check(self.basic_filtration_parameters["category"], item["callsign"]):
+                 continue
              if self.basic_filtration_parameters["cid"] and self.basic_filtration_parameters["cid"] != item["Vatsim ID"]:
                  continue
              sanitation_functions = {
@@ -223,17 +218,17 @@ class Controller(HumanUser, object):
                          matched_values += 1
 
              if requested_values != matched_values: continue
-
+             item["Login Time"] = humanize_time(item["Login Time"])
              try:
                  user_requested_fields = filter(None, kwargs["params"]["fields"].split(","))
              except:
                  user_requested_fields = ""
              required_fields = strip_fields(item, self.verbose_name, self.strip_fields_dict, user_requested_fields)
              curr_data.append(required_fields)
-
+         end_index = kwargs["params"].get("limit")
          curr_data = sort_on_field(curr_data, kwargs["params"].get("sort"), self.strip_fields_dict)
-         curr_data = add_boiler_plate(curr_data, self.latest_file["time_updated"], self.boiler_plate[self.verbose_name])
-         end_index = (kwargs["params"]["limit"] + 1) if "limit" in kwargs["params"] else None
+         curr_data = add_boiler_plate(curr_data, self.latest_file["time_updated"], self.boiler_plate[self.verbose_name], end_index)
+         if end_index is not None: end_index += 1
          return curr_data[:end_index]
 
 class Pilot(HumanUser, object):
@@ -292,7 +287,7 @@ class Pilot(HumanUser, object):
         # #Loop through relevant data (pilots, controllers or voice servers)
         for item in self.latest_data[self.verbose_name]:
             #Rating must match (if it doesnt exist then its alltypes)
-            if self.basic_filtration_parameters["rating"] and self.basic_filtration_parameters["rating"] != item["Flight Type"]:
+            if self.basic_filtration_parameters["category"] and self.basic_filtration_parameters["category"] != item["Flight Type"]:
                 continue
             #If CID supplied, then it must match, otherwise continue
             if self.basic_filtration_parameters["cid"] and self.basic_filtration_parameters["cid"] != item["Vatsim ID"]:
@@ -336,6 +331,7 @@ class Pilot(HumanUser, object):
             #if some parameter failed, then it means it didnt match for this record
             if requested_values != matched_values: continue
 
+            item["Login Time"] = humanize_time(item["Login Time"])
             #Filter by fields, culling unneeded fields. If no field was specified, then make it""
             try:
                 user_requested_fields = filter(None, kwargs["params"]["fields"].split(","))
@@ -344,17 +340,11 @@ class Pilot(HumanUser, object):
             #Get requested fields
             required_fields = strip_fields(item, self.verbose_name, self.strip_fields_dict, user_requested_fields)
             curr_data.append(required_fields)
-            #
-            # #Sort if needed, TO--DO: eror is if you are not seeing a field and sorting on it, it doesnt work
-            # try:
-            #     curr_data.sort(key=lambda x: x[self.strip_fields_dict[kwargs["params"]["sort"]]])
-            # except KeyError:
-            #     pass
-
+        end_index = kwargs["params"].get("limit")
         #Sort if needed
         curr_data = sort_on_field(curr_data, kwargs["params"].get("sort"), self.strip_fields_dict)
         #Add boiler plate text
-        curr_data = add_boiler_plate(curr_data, self.latest_file["time_updated"], self.boiler_plate[self.verbose_name])
+        curr_data = add_boiler_plate(curr_data, self.latest_file["time_updated"], self.boiler_plate[self.verbose_name], end_index)
         # Find end index for limit (if it's None, then it splices list until the end)
-        end_index = (kwargs["params"]["limit"] + 1) if "limit" in kwargs["params"] else None
+        if end_index is not None: end_index += 1
         return curr_data[:end_index]
