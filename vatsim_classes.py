@@ -139,33 +139,33 @@ class HumanUser(VatsimData, object):
                 #This is really a custom type, so make it "unknown"
                 raise IndexError
             #first letter should be the flight code ("IFR" => "I" or "VFR -> "V")
-            instrument_rating = self.base_url.split("/")[0][0]
+            category = self.base_url.split("/")[0][0]
         except IndexError:
-            instrument_rating = ""
+            category = ""
 
         #Hard coded parameters in URL
         self.basic_filtration_parameters = {
-            "rating": instrument_rating,
+            "category": category,
             "cid": cid
         }
 
-class Controller(VatsimData, object):
+class Controller(HumanUser, object):
      pass
      ''' Use this class for accessing controller data '''
      def __init__(self, page_url="", cid=None, **kwargs):
          self.verbose_name = "controllers"
-         super(Pilot, self).__init__(self.verbose_name, page_url, cid, **kwargs)
+         super(Controller, self).__init__(self.verbose_name, page_url, cid, **kwargs)
          self.paths = [
-               self.root_path + self.verbose_name,
-               self.root_path + self.verbose_name + '/alltypes',
-               self.root_path + self.verbose_name + '/alltypes/<int:cid>',
-               self.root_path + self.verbose_name + '/centers',
-               self.root_path + self.verbose_name + '/centers/<int:cid>',
-               self.root_path + self.verbose_name + '/towers',
-               self.root_path + self.verbose_name + '/towers/<int:cid>'
+             self.root_path + self.verbose_name,
+             self.root_path + self.verbose_name + '/alltypes',
+             self.root_path + self.verbose_name + '/alltypes/<int:cid>',
+             self.root_path + self.verbose_name + '/centers',
+             self.root_path + self.verbose_name + '/centers/<int:cid>',
+             self.root_path + self.verbose_name + '/towers',
+             self.root_path + self.verbose_name + '/towers/<int:cid>'
          ]
 
-        self.possible_parameters = {
+         self.possible_parameters = {
             "callsign": {"clean_name": "Callsign", "comparator": within},
             "real_name": {"clean_name": "Real Name", "comparator": within},
             "frequency": {"clean_name": "Real Name", "comparator": within},
@@ -181,14 +181,60 @@ class Controller(VatsimData, object):
             "max_logontime": {"clean_name": "Login Time", "comparator": minimum}
         }
 
-        self.strip_fields_dict = {"callsign": "Callsign", "airport": "Airport", \
+         self.strip_fields_dict = {"callsign": "Callsign", "airport": "Airport", \
             "vatsim_id": "Vatsim ID", "real_name": "Real Name", "frequency": "Frequency", \
             "latitude": "Latitude", "longitude": "Longitude", "visible_range": "Visible Range", \
             "atis": "ATIS", "login_time": "Login Time"}
 
-        def filter(self, **kwargs):
-            ''' filter() filters the data-set based on kwargs (see docs for kwarg help) '''
+     def filter(self, **kwargs):
+         ''' filter() filters the data-set based on kwargs (see docs for kwarg help) '''
+         curr_data = []
+         for item in self.latest_data[self.verbose_name]:
+             if self.basic_filtration_parameters["category"]:
+                 #category is supplied
+                 cat = self.basic_filtration_parameters["category"]
+                 curr_callsign = item["Callsign"].lower()
+                 if cat == "c" and not "ctr" in curr_callsign:
+                     continue
+                 elif cat == "t" and ("ctr" in curr_callsign or "sup" in curr_callsign):
+                     continue
+             if self.basic_filtration_parameters["cid"] and self.basic_filtration_parameters["cid"] != item["Vatsim ID"]:
+                 continue
+             sanitation_functions = {
+                 "min_logontime": parseTime,
+                 "max_logontime": parseTime
+             }
+             requested_values, matched_values = (0, 0)
 
+             for filter_param in self.possible_parameters:
+                 if filter_param in kwargs["params"]:
+                     requested_values += 1
+                     try:
+                         user_requested_value = kwargs["params"][filter_param].replace("\"", "").replace("'", "")
+                     except AttributeError:
+                         user_requested_value = kwargs["params"][filter_param]
+                     if filter_param in sanitation_functions:
+                         desanitizer = sanitation_functions[filter_param]
+                         user_requested_value = desanitizer(user_requested_value)
+                     clean_name = self.possible_parameters[filter_param]["clean_name"]
+                     comparator_function = self.possible_parameters[filter_param]["comparator"]
+
+                     if compare(item[clean_name], user_requested_value, comparator_function):
+                         matched_values += 1
+
+             if requested_values != matched_values: continue
+
+             try:
+                 user_requested_fields = filter(None, kwargs["params"]["fields"].split(","))
+             except:
+                 user_requested_fields = ""
+             required_fields = strip_fields(item, self.verbose_name, self.strip_fields_dict, user_requested_fields)
+             curr_data.append(required_fields)
+
+         curr_data = sort_on_field(curr_data, kwargs["params"].get("sort"), self.strip_fields_dict)
+         curr_data = add_boiler_plate(curr_data, self.latest_file["time_updated"], self.boiler_plate[self.verbose_name])
+         end_index = (kwargs["params"]["limit"] + 1) if "limit" in kwargs["params"] else None
+         return curr_data[:end_index]
 
 class Pilot(HumanUser, object):
     ''' Use this class for accessing pilot data '''
