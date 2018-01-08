@@ -6,10 +6,11 @@ Used by VATSee on the backend.
 
 # Libraries Required
 
-- Flask
+- Flask (at least 0.12.2)
 - flask_restful
-- requests
-- webargs
+- requests (at least 2.12.4)
+- webargs (at least 1.8.1)
+- StringDist (at least 1.0.9)
 
 #To Do
 - logging
