@@ -56,13 +56,13 @@ def vatsim_to_unix_time(vt):
 
 ################################################################################
 
-def vatsim_to_int(data):
-    ''' vatsim_to_int() takes raw data from the text file and tries to return
-    it as an integer '''
+def vatsim_to_num(data, num_function):
+    ''' vatsim_to_num() takes raw data from the text file and tries to return
+    it as a number, converted via num_function (either int or float) '''
     try:
-        return int(data)
+        return num_function(data)
     except ValueError:
-        return 0
+        return num_function(0)
 
 ################################################################################
 
@@ -81,18 +81,18 @@ def prettify_data(line, verbose_name):
         return {"Location": line[1], "Address": line[0], "Name": line[2],
         "Host Name": line[3], "Clients Allowed": line[4]}
     elif verbose_name == "controllers":
-        return {"Callsign": line[0], "Airport": airport_from_callsign(line[0]), "Vatsim ID": vatsim_to_int(line[1]), \
-        "Real Name": line[2], "Frequency": line[4], "Latitude": line[5], \
-        "Longitude": line[6], "Visible Range": line[19], "ATIS": \
+        return {"Callsign": line[0], "Airport": airport_from_callsign(line[0]), "Vatsim ID": vatsim_to_num(line[1], int), \
+        "Real Name": line[2], "Frequency": line[4], "Latitude": vatsim_to_num(line[5], float), \
+        "Longitude": vatsim_to_num(line[6], float), "Visible Range": vatsim_to_num(line[19], int), "ATIS": \
         line[35], "Login Time": vatsim_to_unix_time(line[37])}
     elif verbose_name == "pilots":
-        return {"Callsign": line[0], "Vatsim ID": vatsim_to_int(line[1]), "Real Name": line[2], \
-        "Latitude": line[5], "Longitude": line[6], "Login Time": vatsim_to_unix_time(line[37]), \
-        "Altitude": vatsim_to_int(line[7]), "Ground Speed": vatsim_to_int(line[8]), "Heading": vatsim_to_int(line[38]), \
+        return {"Callsign": line[0], "Vatsim ID": vatsim_to_num(line[1], int), "Real Name": line[2], \
+        "Latitude": vatsim_to_num(line[5], float), "Longitude": vatsim_to_num(line[6], float), \
+        "Login Time": vatsim_to_unix_time(line[37]), "Altitude": vatsim_to_num(line[7], int), \
+        "Ground Speed": vatsim_to_num(line[8], int), "Heading": vatsim_to_num(line[38], int), \
         "Route": line[30], "Remarks": line[29], "Planned Aircraft": line[9], \
         "Planned Departure Airport": line[11], "Planned Altitude": flightlevel_to_feet(line[12]), \
-        "Planned Destination Airport": line[13], "Flight Type": line[21], "Planned Departure Time": \
-        line[22]}
+        "Planned Destination Airport": line[13], "Flight Type": line[21], "Planned Departure Time": line[22]}
 
 ################################################################################
 
@@ -309,3 +309,18 @@ def sort_on_field(data_array, user_sort_text, strip_fields_dict):
         except KeyError:
             pass
     return data_array
+
+################################################################################
+
+def category_check(requested_category, current_callsign):
+    ''' category_check() takes a requested category ("t" for tower or "c" for CTR)
+    along with a row of data and returns True if the row is not of the right category
+    '''
+    #convert callsign to lowercase
+    current_callsign = current_callsign.lower()
+    
+    if requested_category == "c" and not "ctr" in current_callsign:
+        return True
+    elif requested_category == "t" and ("ctr" in curr_callsign or "sup" in curr_callsign):
+        return True
+    return False
