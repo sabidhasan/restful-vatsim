@@ -2,6 +2,8 @@
 #Module imports
 from flask import Flask, request
 from flask_restful import Resource, Api
+import difflib
+import stringdist
 #For URL arguments
 from webargs import fields, validate
 from webargs.flaskparser import use_args, parser, abort
@@ -22,9 +24,28 @@ api = Api(app)
 
 
 ################################################################################
-@app.route('/help/')
-def hello():
-    return '<strong>Here is the help</strong>'
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def help(path):
+    ''' Return user friendly help - user is lost! '''
+    user_string = str(path).split("?")
+    real_paths = VoiceServer().paths + Controller().paths + Pilot().paths
+    #Find closest path
+    closest = min(map(lambda x: [x, stringdist.levenshtein(x, user_string[0])], real_paths), key=lambda y: y[1])
+    # m = []
+    # for i, path in enumerate(real_paths):
+    #     m.append([path, ])
+        # d = stringdist.levenshtein(closest[0], user_string[0])
+        #
+        # if d > closest[1] or i == 0:
+        #     closest = [path, difflib.SequenceMatcher(None, closest[0], user_string[0]).ratio()]
+        # print 0/0
+        # def str_distance(acc, val):
+        #     if  > acc[0] or acc[0] == "":
+        #         return [val, difflib.SequenceMatcher(None, val[0], user_string[0]).ratio()]
+        #     return acc
+
+    return '<strong>Did you mean : ' + str(closest[0]) + '?</strong>'
 
 class VoiceServers(Resource):
     ''' Route for /api/v1/VoiceServers[?params]. See docs for params usage '''
@@ -46,7 +67,7 @@ class VoiceServers(Resource):
         #Create voice server class, passing it forceUpdate
         vatsim_voice_server = VoiceServer(force_update=force)
         #Filter based on parameters
-        return vatsim_voice_server.filter(params=request_arguments)
+        return vatsim_voice_server.filter_data(params=request_arguments)
 
 ################################################################################
 class Controllers(Resource):
@@ -60,7 +81,7 @@ class Controllers(Resource):
         "max_latitude": fields.Float(required=False, validate=lambda x: -90 <= x <= 90),
         "min_longitude": fields.Float(required=False, validate=lambda x: -180 <= x <= 180),
         "max_longitude": fields.Float(required=False, validate=lambda x: -180 <= x <= 180),
-        "airport": fields.Str(required=False, validate=lambda x: len(x) in [3, 4]),
+        "airport": fields.Str(required=False, validate=lambda x: 3 <= len(x) <= 4),
         "in_atis": fields.Str(required=False),
         "min_visrange": fields.Int(required=False),
         "max_visrange": fields.Int(required=False),
@@ -79,7 +100,7 @@ class Controllers(Resource):
          #Create pilot class, passing it url, cid and forceUpdate
          vatsim_controllers = Controller(request.url_rule, cid, force_update=force)
 
-         return vatsim_controllers.filter(params=request_arguments)
+         return vatsim_controllers.filter_data(params=request_arguments)
 
 ################################################################################
 
@@ -120,7 +141,7 @@ class Pilots(Resource):
          #Create pilot class, passing it url, cid and forceUpdate
          vatsim_pilots = Pilot(request.url_rule, cid, force_update=force)
 
-         return vatsim_pilots.filter(params=request_arguments)
+         return vatsim_pilots.filter_data(params=request_arguments)
 
 ################################################################################
 
@@ -148,7 +169,6 @@ def handle_request_parsing_error(err):
         "max_heading": "'max_heading' must be numeric",
         "min_speed": "'min_speed' must be a number",
         "max_speed": "'max_speed' must be a number",
-        "frequency": "'frequency' must be numeric",
         "min_visrange": "'min_visrange' must be numeric",
         "max_visrange": "'max_visrange' must be numeric",
         "airport": "'airport' must be 3 or 4 digit ICAO/IATA code"

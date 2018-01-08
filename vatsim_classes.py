@@ -3,6 +3,8 @@
 import os, time
 #import non-class functions
 from vatsim_functions import *
+from flask_restful import *
+from flask import *
 
 #Class structure. Starred classes should be created directly
 # VatsimData
@@ -82,7 +84,7 @@ class VoiceServer(VatsimData, object):
         self.strip_fields_dict = {"location": "Location", "address": "Address", "name": "Name", \
             "host_name": "Host Name", "clients_allowed": "Clients Allowed"}
 
-    def filter(self, **kwargs):
+    def filter_data(self, **kwargs):
         ''' Filters the data-set based on kwargs (see docs for kwarg help) '''
         #Start variable
         curr_data = []
@@ -150,6 +152,68 @@ class HumanUser(VatsimData, object):
             "cid": cid
         }
 
+    def filter_data(self, category_func, category_name, sanitation_functions, possible_parameters, strip_fields_dict, **kwargs):
+        '''
+        filter_data filters data for both Pilot and Controller classes. category_func (func) and category_name (str) are used
+        for comparing user requested category (alltypes/vfr/ifr or alltypes/towers/center), sanitation_functions (dict) are
+        applied to user input before parsing (eg flightlevel_to_feet), possible_parameters are all possible parameters, and
+        strip_fields_dict is used to parse user supplied input for "field" parameter
+        '''
+        #Make empty list that will be returned
+        curr_data = []
+
+        # Loop through relevant data (pilots, controllers or voice servers)
+        for item in self.latest_data[self.verbose_name]:
+            #Rating must exist (if it doesnt exist then its alltypes), and match
+            #Possible category_func are : controller_category_check and pilot_category_check
+            if self.basic_filtration_parameters["category"] and category_func(self.basic_filtration_parameters["category"], item[category_name]):
+                continue
+            #If CID supplied, then it must match, otherwise continue
+            if self.basic_filtration_parameters["cid"] and self.basic_filtration_parameters["cid"] != item["Vatsim ID"]:
+                handle_request_parsing_error('s')
+                continue
+            #These must match by the end. If not, then this current line doesnt match
+            requested_values, matched_values = (0, 0)
+
+            #Compare all possible filter keywords - must loop thru possible_parameters
+            #because kwargs[params] has a bunch of other crap (forceUpdate, sort, etc.)
+            for filter_param in possible_parameters:
+                if filter_param in kwargs["params"]:
+                    requested_values += 1
+                    #If string, then remove quotation marks (if AttributeError then its a float)
+                    try:
+                        user_requested_value = kwargs["params"][filter_param].replace("\"", "").replace("'", "")
+                    except AttributeError:
+                        user_requested_value = kwargs["params"][filter_param]
+
+                    #Sanitize input, if necessary
+                    if filter_param in sanitation_functions:
+                        desanitizer = sanitation_functions[filter_param]
+                        user_requested_value = desanitizer(user_requested_value)
+
+                    #Name for key in the local database ("Vatsim ID" vs "vatsim_id")
+                    clean_name = possible_parameters[filter_param]["clean_name"]
+                    #The comparator function used to compare these
+                    comparator_function = possible_parameters[filter_param]["comparator"]
+                    #If a match is found, then update matched_values
+                    if compare(item[clean_name], user_requested_value, comparator_function): matched_values += 1
+
+            #if some parameter failed, then it means these dont for this record, therefore skip
+            if requested_values != matched_values: continue
+            #Now that time comparison is possibly done (if it was requested), humanize the time
+            item["Login Time"] = humanize_time(item["Login Time"])
+            #Filter by fields, thereby culling unneeded fields. If no field was specified, then make it ""
+            try:
+                user_requested_fields = filter(None, kwargs["params"]["fields"].split(","))
+            except:
+                user_requested_fields = ""
+            #Get requested fields
+            required_fields = strip_fields(item, self.verbose_name, strip_fields_dict, user_requested_fields)
+            curr_data.append(required_fields)
+        return curr_data
+
+################################################################################
+
 class Controller(HumanUser, object):
      pass
      ''' Use this class for accessing controller data '''
@@ -169,7 +233,6 @@ class Controller(HumanUser, object):
          self.possible_parameters = {
             "callsign": {"clean_name": "Callsign", "comparator": within},
             "real_name": {"clean_name": "Real Name", "comparator": within},
-            "frequency": {"clean_name": "Real Name", "comparator": within},
             "min_latitude": {"clean_name": "Latitude", "comparator": maximum},
             "max_latitude": {"clean_name": "Latitude", "comparator": minimum},
             "min_longitude":  {"clean_name": "Longitude", "comparator": maximum},
@@ -187,44 +250,16 @@ class Controller(HumanUser, object):
             "latitude": "Latitude", "longitude": "Longitude", "visible_range": "Visible Range", \
             "atis": "ATIS", "login_time": "Login Time"}
 
-     def filter(self, **kwargs):
-         ''' filter() filters the data-set based on kwargs (see docs for kwarg help) '''
-         curr_data = []
-         for item in self.latest_data[self.verbose_name]:
-             if self.basic_filtration_parameters["category"] and category_check(self.basic_filtration_parameters["category"], item["callsign"]):
-                 continue
-             if self.basic_filtration_parameters["cid"] and self.basic_filtration_parameters["cid"] != item["Vatsim ID"]:
-                 continue
-             sanitation_functions = {
+     def filter_data(self, **kwargs):
+         ''' filter_data() filters the data-set based on kwargs (see docs for kwarg help) '''
+         params = self.possible_parameters
+         dic = self.strip_fields_dict
+         sanitation_functions = {
                  "min_logontime": parseTime,
                  "max_logontime": parseTime
-             }
-             requested_values, matched_values = (0, 0)
+         }
+         curr_data = super(Controller, self).filter_data(controller_category_check, "Callsign", sanitation_functions, params, dic, **kwargs)
 
-             for filter_param in self.possible_parameters:
-                 if filter_param in kwargs["params"]:
-                     requested_values += 1
-                     try:
-                         user_requested_value = kwargs["params"][filter_param].replace("\"", "").replace("'", "")
-                     except AttributeError:
-                         user_requested_value = kwargs["params"][filter_param]
-                     if filter_param in sanitation_functions:
-                         desanitizer = sanitation_functions[filter_param]
-                         user_requested_value = desanitizer(user_requested_value)
-                     clean_name = self.possible_parameters[filter_param]["clean_name"]
-                     comparator_function = self.possible_parameters[filter_param]["comparator"]
-
-                     if compare(item[clean_name], user_requested_value, comparator_function):
-                         matched_values += 1
-
-             if requested_values != matched_values: continue
-             item["Login Time"] = humanize_time(item["Login Time"])
-             try:
-                 user_requested_fields = filter(None, kwargs["params"]["fields"].split(","))
-             except:
-                 user_requested_fields = ""
-             required_fields = strip_fields(item, self.verbose_name, self.strip_fields_dict, user_requested_fields)
-             curr_data.append(required_fields)
          end_index = kwargs["params"].get("limit")
          curr_data = sort_on_field(curr_data, kwargs["params"].get("sort"), self.strip_fields_dict)
          curr_data = add_boiler_plate(curr_data, self.latest_file["time_updated"], self.boiler_plate[self.verbose_name], end_index)
@@ -280,66 +315,15 @@ class Pilot(HumanUser, object):
             "airport_destination": "Planned Destination Airport", "airport_origin": "Planned Departure Airport", \
             "planned_altitude": "Planned Altitude", "flight_type": "Flight Type", "time": "Planned Departure Time"}
 
-    def filter(self, **kwargs):
+    def filter_data(self, **kwargs):
         ''' Filters the data-set based on kwargs (see docs for kwarg help) '''
-        curr_data = []
-
-        # #Loop through relevant data (pilots, controllers or voice servers)
-        for item in self.latest_data[self.verbose_name]:
-            #Rating must match (if it doesnt exist then its alltypes)
-            if self.basic_filtration_parameters["category"] and self.basic_filtration_parameters["category"] != item["Flight Type"]:
-                continue
-            #If CID supplied, then it must match, otherwise continue
-            if self.basic_filtration_parameters["cid"] and self.basic_filtration_parameters["cid"] != item["Vatsim ID"]:
-                continue
-
-            #Applied to user inputs before filtration - altitude -> ft; time -> unix epoch time
-            sanitation_functions = {
+        sanitation_functions = {
                 "min_altitude": flightlevel_to_feet,
                 "max_altitude": flightlevel_to_feet,
                 "min_logontime": parseTime,
                 "max_logontime": parseTime
-            }
-
-            #These must match by the end. If not, then this current line doesnt match
-            requested_values, matched_values = (0, 0)
-
-            #Compare all possible filter keywords - must loop thru self.possible_parameters
-            #because kwargs[params] has a bunch of other crap (forceUpdate, etc.)
-            for filter_param in self.possible_parameters:
-                if filter_param in kwargs["params"]:
-                    requested_values += 1
-                    #If string, then remove quotation marks (if AttributeError then its a float)
-                    try:
-                        user_requested_value = kwargs["params"][filter_param].replace("\"", "").replace("'", "")
-                    except AttributeError:
-                        user_requested_value = kwargs["params"][filter_param]
-
-                    #Sanitize input
-                    if filter_param in sanitation_functions:
-                        desanitizer = sanitation_functions[filter_param]
-                        user_requested_value = desanitizer(user_requested_value)
-
-                    #Name for key in the local database
-                    clean_name = self.possible_parameters[filter_param]["clean_name"]
-                    #The comparator function used to compare these
-                    comparator_function = self.possible_parameters[filter_param]["comparator"]
-
-                    if compare(item[clean_name], user_requested_value, comparator_function):
-                        matched_values += 1
-
-            #if some parameter failed, then it means it didnt match for this record
-            if requested_values != matched_values: continue
-
-            item["Login Time"] = humanize_time(item["Login Time"])
-            #Filter by fields, culling unneeded fields. If no field was specified, then make it""
-            try:
-                user_requested_fields = filter(None, kwargs["params"]["fields"].split(","))
-            except:
-                user_requested_fields = ""
-            #Get requested fields
-            required_fields = strip_fields(item, self.verbose_name, self.strip_fields_dict, user_requested_fields)
-            curr_data.append(required_fields)
+        }
+        curr_data = super(Pilot, self).filter_data(pilot_category_check, "Flight Type", sanitation_functions, self.possible_parameters, self.strip_fields_dict, **kwargs)
         end_index = kwargs["params"].get("limit")
         #Sort if needed
         curr_data = sort_on_field(curr_data, kwargs["params"].get("sort"), self.strip_fields_dict)

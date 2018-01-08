@@ -224,7 +224,7 @@ def maximum(local_data_value, user_requested_value):
 
 def within(local_data_value, user_requested_value):
      ''' within() is a make-do first order function for the in keyword '''
-     return user_requested_value in local_data_value
+     return str(user_requested_value) in str(local_data_value)
 
 ################################################################################
 
@@ -314,7 +314,7 @@ def sort_on_field(data_array, user_sort_text, strip_fields_dict):
 
 ################################################################################
 
-def category_check(requested_category, current_callsign):
+def controller_category_check(requested_category, current_callsign):
     ''' category_check() takes a requested category ("t" for tower or "c" for CTR)
     along with a row of data and returns True if the row is not of the right category
     '''
@@ -323,10 +323,12 @@ def category_check(requested_category, current_callsign):
 
     if requested_category == "c" and not "ctr" in current_callsign:
         return True
-    elif requested_category == "t" and ("ctr" in curr_callsign or "sup" in curr_callsign):
+    elif requested_category == "t" and ("ctr" in current_callsign or "sup" in current_callsign):
         return True
     return False
 
+def pilot_category_check(requested_category, flight_type):
+    return requested_category != flight_type
 ################################################################################
 
 def humanize_time(epoch_time):
