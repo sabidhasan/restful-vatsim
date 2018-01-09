@@ -1,10 +1,10 @@
 # restful-vatsim
 
 Serves RESTful data from VATSim flight simulation network
-
 Used by VATSee on the backend.
+For usage see documentation
 
-# Libraries Required
+### Libraries Required
 
 - Flask (at least 0.12.2)
 - flask_restful
@@ -12,9 +12,11 @@ Used by VATSee on the backend.
 - webargs (at least 1.8.1)
 - StringDist (at least 1.0.9)
 
-#To Do
+### Installation
+- 
+
+### To Do
 - logging
-- writing main functions
-- documentation
+- documentation/usage
 - help page (non API pages should redirect to friendly help page)
 - field validation (things like sort should look for valid input using regex?)
