@@ -11,6 +11,7 @@ For usage see documentation
 - requests (at least 2.12.4)
 - webargs (at least 1.8.1)
 - StringDist (at least 1.0.9)
+- gunicorn
 
 ### Installation
 -
