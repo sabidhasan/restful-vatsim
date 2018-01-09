@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+
+    <link href="{{ url_for('static', filename='styles.css') }}" rel="stylesheet" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Uh oh!</h1>
+      <div class="help">
+        <h3>Looks like you are lost. Were you looking for:</h3>
+        <h3><a href = "{{ link }}">[{{ path|safe }}]</a></h3>
+      </div>
+    </div>
+  </body>
+</html>
