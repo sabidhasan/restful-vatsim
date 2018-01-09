@@ -72,64 +72,6 @@ def airport_from_callsign(callsign):
 
 ################################################################################
 
-def prettify_data(line, verbose_name):
-    ''' prettify_data() recieves a line of data from the vatsim file, already split on ":",
-    and prettifies it to make it ready for jsonifying - discards unneeded data, while
-    keeping the data that the API needs to include. Returns a dictionary. Type =
-    "pilot", "controller" or "voice_servers" '''
-    if verbose_name == "voice_servers":
-        return {"Location": line[1], "Address": line[0], "Name": line[2],
-        "Host Name": line[3], "Clients Allowed": line[4]}
-    elif verbose_name == "controllers":
-        return {"Callsign": line[0], "Airport": airport_from_callsign(line[0]), "Vatsim ID": vatsim_to_num(line[1], int), \
-        "Real Name": line[2], "Frequency": line[4], "Latitude": vatsim_to_num(line[5], float), \
-        "Longitude": vatsim_to_num(line[6], float), "Visible Range": vatsim_to_num(line[19], int), "ATIS": \
-        line[35], "Login Time": vatsim_to_unix_time(line[37])}
-    elif verbose_name == "pilots":
-        return {"Callsign": line[0], "Vatsim ID": vatsim_to_num(line[1], int), "Real Name": line[2], \
-        "Latitude": vatsim_to_num(line[5], float), "Longitude": vatsim_to_num(line[6], float), \
-        "Login Time": vatsim_to_unix_time(line[37]), "Altitude": vatsim_to_num(line[7], int), \
-        "Ground Speed": vatsim_to_num(line[8], int), "Heading": vatsim_to_num(line[38], int), \
-        "Route": line[30], "Remarks": line[29], "Planned Aircraft": line[9], \
-        "Planned Departure Airport": line[11], "Planned Altitude": flightlevel_to_feet(line[12]), \
-        "Planned Destination Airport": line[13], "Flight Type": line[21], "Planned Departure Time": line[22]}
-
-################################################################################
-
-def jsonify_data(data):
-    ''' jsonify_data() makes recieved raw VATSIM.txt data usable by trimming the
-    fat, parsing for errors, and making data easily searchable '''
-    #Linted data that will be returned
-    parsed_data = {
-        "pilots": [],
-        "voice_servers": [],
-        "controllers": []
-    }
-    #Loop through line by line
-    for line in data.split("\n"):
-		#Check if line is valid
-        if not check_line_validity(line): continue
-		#Split by colon (the delimiter)
-        vals = line.split(":")
-        #This is a voiceserver
-        if len(vals) == 6:
-            # Construct dictionary of this line + append to parsed data
-            curr_data = prettify_data(vals, "voice_servers")
-            parsed_data["voice_servers"].append(curr_data)
-        #ATC found
-        elif vals[3] == "ATC":
-            #Construct dictionary of this line, and append to parsed data
-            curr_data = prettify_data(vals, "controllers")
-            parsed_data["controllers"].append(curr_data)
-        #pilot found
-        elif vals[3] == "PILOT":
-            #Construct dictionary of this line
-            curr_data = prettify_data(vals, "pilots")
-            parsed_data["pilots"].append(curr_data)
-    return parsed_data
-
-################################################################################
-
 def parseTime(raw_time):
     ''' parseTime() function takes a raw_time, which is either a Unix timestamp,
     or human readable time [now,today,yesterday]-[xhym, xh, ym, zs, 786876], and

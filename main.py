@@ -179,7 +179,6 @@ def handle_request_parsing_error(err):
         current_error = {"*" + error + "* Parameter": errors[error] for error in err[0]}
     except:
         current_error = "An unknown error has occured"
-        # log it
     abort(422, errors=current_error)
 
 ################################################################################

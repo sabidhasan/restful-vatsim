@@ -56,7 +56,7 @@ class VatsimData(object):
         else:
             #Return file from disk
             with open(self.file_path) as f:
-                data = jsonify_data(f.read())
+                data = self.jsonify_data(f.read())
                 self.latest_file = {'time_updated': os.path.getmtime(self.file_path), 'data': data, "source": "cache"}
         return self.latest_file
 
@@ -68,11 +68,62 @@ class VatsimData(object):
         if new_file is not None:
             self.latest_file["time_updated"] = int(time.time())
             #Jsonify the data
-            self.latest_file["data"] = jsonify_data(new_file)
+            self.latest_file["data"] = self.jsonify_data(new_file)
             #record the source
             self.latest_file["source"] = source
         else:
             print "Downloaded file not valid"
+
+    def jsonify_data(self, data):
+        ''' jsonify_data() makes recieved raw VATSIM.txt data usable by trimming the
+        fat, parsing for errors, and making data easily searchable '''
+        #Linted data that will be returned
+        parsed_data = {
+            "pilots": [],
+            "voice_servers": [],
+            "controllers": []
+        }
+        #Loop through line by line
+        for line in data.split("\n"):
+    		#Check if line is valid
+            if not check_line_validity(line): continue
+    		#Split by colon (the delimiter)
+            vals = line.split(":")
+
+            long_name = {"ATC": "controllers", "PILOT": "pilots"}.get(vals[3])
+            #This is a voiceserver
+            if len(vals) == 6:
+                # Construct dictionary of this line + append to parsed data
+                curr_data = self.prettify_data(vals, "voice_servers")
+                parsed_data["voice_servers"].append(curr_data)
+            #ATC or pilot found
+            elif long_name:
+                #Construct dictionary of this line, and append to parsed data
+                curr_data = self.prettify_data(vals, long_name)
+                parsed_data[long_name].append(curr_data)
+        return parsed_data
+
+    def prettify_data(self, line, verbose_name):
+        ''' prettify_data() recieves a line of data from the vatsim file, already split on ":",
+        and prettifies it to make it ready for jsonifying - discards unneeded data, while
+        keeping the data that the API needs to include. Returns a dictionary. Type =
+        "pilot", "controller" or "voice_servers" '''
+        if verbose_name == "voice_servers":
+            return {"Location": line[1], "Address": line[0], "Name": line[2],
+            "Host Name": line[3], "Clients Allowed": line[4]}
+        elif verbose_name == "controllers":
+            return {"Callsign": line[0], "Airport": airport_from_callsign(line[0]), "Vatsim ID": vatsim_to_num(line[1], int), \
+            "Real Name": line[2], "Frequency": line[4], "Latitude": vatsim_to_num(line[5], float), \
+            "Longitude": vatsim_to_num(line[6], float), "Visible Range": vatsim_to_num(line[19], int), "ATIS": \
+            line[35], "Login Time": vatsim_to_unix_time(line[37])}
+        elif verbose_name == "pilots":
+            return {"Callsign": line[0], "Vatsim ID": vatsim_to_num(line[1], int), "Real Name": line[2], \
+            "Latitude": vatsim_to_num(line[5], float), "Longitude": vatsim_to_num(line[6], float), \
+            "Login Time": vatsim_to_unix_time(line[37]), "Altitude": vatsim_to_num(line[7], int), \
+            "Ground Speed": vatsim_to_num(line[8], int), "Heading": vatsim_to_num(line[38], int), \
+            "Route": line[30], "Remarks": line[29], "Planned Aircraft": line[9], \
+            "Planned Departure Airport": line[11], "Planned Altitude": flightlevel_to_feet(line[12]), \
+            "Planned Destination Airport": line[13], "Flight Type": line[21], "Planned Departure Time": line[22]}
 
 ################################################################################
 
@@ -211,7 +262,7 @@ class HumanUser(VatsimData, object):
             #Get requested fields
             required_fields = strip_fields(item, self.verbose_name, strip_fields_dict, user_requested_fields)
             curr_data.append(required_fields)
-        return curr_data
+        return curr_data[0][0]
 
 ################################################################################
 
