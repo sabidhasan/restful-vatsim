@@ -52,23 +52,25 @@ class VatsimData(object):
 
         #See if file exists
         if not os.path.isfile(self.file_path):
-            return {'time_updated': 0, 'data': None}
+            return {'time_updated': 0, 'data': None, 'source': None}
         else:
             #Return file from disk
             with open(self.file_path) as f:
                 data = jsonify_data(f.read())
-                self.latest_file = {'time_updated': os.path.getmtime(self.file_path), 'data': data}
+                self.latest_file = {'time_updated': os.path.getmtime(self.file_path), 'data': data, "source": "cache"}
         return self.latest_file
 
     def update_file(self):
         '''update_file() fetches new data. It then returns freshest data'''
         #Needs updating
-        new_file = download()
+        new_file, source = download()
 
         if new_file is not None:
             self.latest_file["time_updated"] = int(time.time())
             #Jsonify the data
             self.latest_file["data"] = jsonify_data(new_file)
+            #record the source
+            self.latest_file["source"] = source
         else:
             print "Downloaded file not valid"
 
@@ -115,7 +117,7 @@ class VoiceServer(VatsimData, object):
         #Sort if needed
         curr_data = sort_on_field(curr_data, kwargs["params"].get("sort"), self.strip_fields_dict)
         #Add boiler plate
-        curr_data = add_boiler_plate(curr_data, self.latest_file["time_updated"], self.boiler_plate[self.verbose_name], end_index)
+        curr_data = add_boiler_plate(curr_data, self.latest_file["source"], self.latest_file["time_updated"], self.boiler_plate[self.verbose_name], end_index)
         #Cut by index
         if end_index is not None: end_index += 1
         return curr_data[:end_index]
@@ -170,7 +172,6 @@ class HumanUser(VatsimData, object):
                 continue
             #If CID supplied, then it must match, otherwise continue
             if self.basic_filtration_parameters["cid"] and self.basic_filtration_parameters["cid"] != item["Vatsim ID"]:
-                handle_request_parsing_error('s')
                 continue
             #These must match by the end. If not, then this current line doesnt match
             requested_values, matched_values = (0, 0)
@@ -262,7 +263,7 @@ class Controller(HumanUser, object):
 
          end_index = kwargs["params"].get("limit")
          curr_data = sort_on_field(curr_data, kwargs["params"].get("sort"), self.strip_fields_dict)
-         curr_data = add_boiler_plate(curr_data, self.latest_file["time_updated"], self.boiler_plate[self.verbose_name], end_index)
+         curr_data = add_boiler_plate(curr_data, self.latest_file["source"], self.latest_file["time_updated"], self.boiler_plate[self.verbose_name], end_index)
          if end_index is not None: end_index += 1
          return curr_data[:end_index]
 
@@ -328,7 +329,7 @@ class Pilot(HumanUser, object):
         #Sort if needed
         curr_data = sort_on_field(curr_data, kwargs["params"].get("sort"), self.strip_fields_dict)
         #Add boiler plate text
-        curr_data = add_boiler_plate(curr_data, self.latest_file["time_updated"], self.boiler_plate[self.verbose_name], end_index)
+        curr_data = add_boiler_plate(curr_data, self.latest_file["source"], self.latest_file["time_updated"], self.boiler_plate[self.verbose_name], end_index)
         # Find end index for limit (if it's None, then it splices list until the end)
         if end_index is not None: end_index += 1
         return curr_data[:end_index]

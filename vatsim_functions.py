@@ -19,11 +19,11 @@ def download():
             raise ValueError
     except:
         print "Could not download file"
-        return None
+        return None, None
 
     with open("vatsim_data.txt", 'wb') as f:
         f.write(data)
-    return data
+    return data, random_url
 
 ################################################################################
 
@@ -277,7 +277,7 @@ def strip_fields(data_row, verbose_name, name_dictionary, user_requested_fields)
 
 ################################################################################
 
-def add_boiler_plate(data_array, time_updated, boiler_plate_text, end_index):
+def add_boiler_plate(data_array, source, time_updated, boiler_plate_text, end_index):
     ''' add_boiler_plate() takes a list of data, time_updated integer, boiler_plate_text
     and end_index (which is used for the limit parameter), adds boiler plate text
     (what is then returned in the first position of the array) '''
@@ -286,7 +286,8 @@ def add_boiler_plate(data_array, time_updated, boiler_plate_text, end_index):
     boiler_plate = {"Time Updated (UTC)": humanize_time(int(time_updated)),
         "Info": boiler_plate_text,
         "File Age (sec)": int(time.time() - time_updated),
-        "Number of Records": num_rec}
+        "Number of Records": num_rec,
+        "Source": source}
     data_array.insert(0, boiler_plate)
     return data_array
 
