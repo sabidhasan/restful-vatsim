@@ -3,7 +3,7 @@
 import os, time
 #import non-class functions
 from vatsim_functions import *
-from flask_restful import *
+#from flask_restful import *
 from flask import *
 
 #Class structure. Starred classes should be created directly
