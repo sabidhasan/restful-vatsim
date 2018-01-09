@@ -1,14 +1,3 @@
-uses
-    about to depart Aircraft
-    busiest airports
-    VA searching
-    planes flying in a certain area
-    planes violating speed rules (<250 kts <18000 ft)
-    planes heading a certain direction
-    who just signed in and got going quickly (logon time and min speed)
-    who is currently saying they are streaming on twitch (remarks)
-    fastest planes out there right now
-
 #VOICE SERVER
     #/api/v1/voice_servers
     #/api/v1/voice_servers?name=London                                only servers with "london" as name

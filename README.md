@@ -13,10 +13,20 @@ For usage see documentation
 - StringDist (at least 1.0.9)
 
 ### Installation
-- 
+-
 
 ### To Do
 - logging
 - documentation/usage
 - help page (non API pages should redirect to friendly help page)
 - field validation (things like sort should look for valid input using regex?)
+
+### Uses
+-  About to depart Aircraft (speed and altitude)
+-  Busiest Airports
+-  VirtualAirline searching (remarks)
+-  Planes violating speed rules (<250 kts <18000 ft)
+-  Planes heading a certain direction, in a certain location
+-  Who just signed in and got going quickly
+-  Find who is streaming on twitch ("twitch" in remarks)
+-  Fastest planes currently online
