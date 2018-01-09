@@ -2,8 +2,7 @@
 #Module imports
 from flask import Flask, request, render_template
 from flask_restful import Resource, Api
-import difflib
-import stringdist
+from stringdist import levenshtein
 #For URL arguments
 from webargs import fields, validate
 from webargs.flaskparser import use_args, parser, abort
@@ -36,7 +35,7 @@ def help(path):
     #Find closest path
 
 
-    closest_path = min([(i, stringdist.levenshtein(i, user_string[0])) for i in valid_paths], key=lambda y: y[1])
+    closest_path = min([(i, levenshtein(i, user_string[0])) for i in valid_paths], key=lambda y: y[1])
     closest_path_pieces = [part for part in closest_path[0].split("/") if part]
     #Generate marked up URL
     for index, item in enumerate(closest_path_pieces):
@@ -48,10 +47,10 @@ def help(path):
             break
     #Get html parameters if they exist
     params = "&".join(["%s=%s" % (a, b) for a, b in request.args.iteritems()])
-    params = "?" + params[1:]
+    params = "?" + params
     #Generate URL for redirection
     url = "/".join(closest_path_pieces)
-    
+
     #Return HTML
     return render_template('help.html', path=url + params, link=closest_path[0] + params)
 
