@@ -262,7 +262,7 @@ class HumanUser(VatsimData, object):
             #Get requested fields
             required_fields = strip_fields(item, self.verbose_name, strip_fields_dict, user_requested_fields)
             curr_data.append(required_fields)
-        return curr_data[0][0]
+        return curr_data
 
 ################################################################################
 

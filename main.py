@@ -1,6 +1,6 @@
 ''' Docs '''
 #Module imports
-from flask import Flask, request
+from flask import Flask, request, render_template
 from flask_restful import Resource, Api
 import difflib
 import stringdist
@@ -28,24 +28,32 @@ api = Api(app)
 @app.route('/<path:path>')
 def help(path):
     ''' Return user friendly help - user is lost! '''
+    #Get user entered path
     user_string = str(path).split("?")
-    real_paths = VoiceServer().paths + Controller().paths + Pilot().paths
+    user_string_pieces = user_string[0].split("/")
+    #Get valid paths as list
+    valid_paths = VoiceServer().paths + Controller().paths + Pilot().paths
     #Find closest path
-    closest = min(map(lambda x: [x, stringdist.levenshtein(x, user_string[0])], real_paths), key=lambda y: y[1])
-    # m = []
-    # for i, path in enumerate(real_paths):
-    #     m.append([path, ])
-        # d = stringdist.levenshtein(closest[0], user_string[0])
-        #
-        # if d > closest[1] or i == 0:
-        #     closest = [path, difflib.SequenceMatcher(None, closest[0], user_string[0]).ratio()]
-        # print 0/0
-        # def str_distance(acc, val):
-        #     if  > acc[0] or acc[0] == "":
-        #         return [val, difflib.SequenceMatcher(None, val[0], user_string[0]).ratio()]
-        #     return acc
 
-    return '<strong>Did you mean : ' + str(closest[0]) + '?</strong>'
+
+    closest_path = min([(i, stringdist.levenshtein(i, user_string[0])) for i in valid_paths], key=lambda y: y[1])
+    closest_path_pieces = [part for part in closest_path[0].split("/") if part]
+    #Generate marked up URL
+    for index, item in enumerate(closest_path_pieces):
+        #See if there is a match
+        try:
+            if item != user_string_pieces[index] and item:
+                closest_path_pieces[index] = "<span>" + item + "</span>"
+        except IndexError:
+            break
+    #Get html parameters if they exist
+    params = "&".join(["%s=%s" % (a, b) for a, b in request.args.iteritems()])
+    params = "?" + params[1:]
+    #Generate URL for redirection
+    url = "/".join(closest_path_pieces)
+    
+    #Return HTML
+    return render_template('help.html', path=url + params, link=closest_path[0] + params)
 
 class VoiceServers(Resource):
     ''' Route for /api/v1/VoiceServers[?params]. See docs for params usage '''
