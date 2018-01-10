@@ -4,13 +4,26 @@
     <meta charset="utf-8">
 
     <link href="{{ url_for('static', filename='styles.css') }}" rel="stylesheet" />
+    <script src="{{ url_for('static', filename='scripts.js') }}"></script>
+
   </head>
-  <body>
+  <body onload="populateHelp()">
     <div class="container">
-      <h1>Uh oh!</h1>
+      {% if original_path %}
+        <h1>Uh oh!</h1>
+      {% else %}
+        <h1>restful-vatsim Documentation</h1>
+      {% endif %}
+      <h2>See github repo for full docs</h2>
       <div class="help">
-        <h3>Looks like you are lost. Were you looking for:</h3>
-        <h3><a href = "{{ link }}">[{{ path|safe }}]</a></h3>
+        {% if original_path %}
+          <h3>You typed a path but it doesn't appear to be a valid restful-vatsim path.
+          <br/>Were you possibly looking for this?</h3>
+          <h3><a href = "{{ link }}">[{{ path|safe }}]</a></h3>
+        {% endif %}
+        <table class="help-table">
+          <!-- populated by JS -->
+        </table>
       </div>
     </div>
   </body>
