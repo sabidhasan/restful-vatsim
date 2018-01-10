@@ -52,7 +52,7 @@ def help(path):
     url = "/".join(closest_path_pieces)
 
     #Return HTML
-    return render_template('help.html', path=url + params, link=closest_path[0] + params)
+    return render_template('help.html', path=url + params, link=closest_path[0] + params, original_path=path)
 
 class VoiceServers(Resource):
     ''' Route for /api/v1/VoiceServers[?params]. See docs for params usage '''
